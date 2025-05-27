@@ -44,18 +44,6 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        coral: {
-          50: "#fef7f7",
-          100: "#feeee8",
-          200: "#fdddd6",
-          300: "#fbc1b4",
-          400: "#f79b8b",
-          500: "#f17563",
-          600: "#e55a47",
-          700: "#c1452f",
-          800: "#a03c2a",
-          900: "#853729",
-        },
       },
       borderRadius: {
         lg: "var(--radius)",
