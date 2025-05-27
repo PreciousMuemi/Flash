@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Search, Wallet, QrCode, Send, Copy, CheckCircle, Clock, XCircle, Users, TrendingUp } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
+import { ConnectButton, useCurrentAccount, useWallets } from '@mysten/dapp-kit';
 
 // Mock data for teams
 const mockTeams = [
@@ -79,13 +80,14 @@ interface TipTransaction {
 export default function TippingSystemMVP() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedTeam, setSelectedTeam] = useState<(typeof mockTeams)[0] | null>(null)
-  const [isWalletConnected, setIsWalletConnected] = useState(false)
+  const [isConnected, setIsConnected] = useState(false)
   const [walletAddress, setWalletAddress] = useState("")
   const [tipAmount, setTipAmount] = useState("")
   const [showTipModal, setShowTipModal] = useState(false)
   const [showQRModal, setShowQRModal] = useState(false)
   const [transactions, setTransactions] = useState<TipTransaction[]>([])
   const [currentTransaction, setCurrentTransaction] = useState<TipTransaction | null>(null)
+  const account = useCurrentAccount();
 
   const filteredTeams = mockTeams.filter(
     (team) =>
@@ -93,21 +95,12 @@ export default function TippingSystemMVP() {
       team.walletAddress.toLowerCase().includes(searchTerm.toLowerCase()),
   )
 
-  const connectWallet = async () => {
-    // Simulate wallet connection
-    setTimeout(() => {
-      setIsWalletConnected(true)
-      setWalletAddress("0xa1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0")
-    }, 1000)
-  }
-
-  const disconnectWallet = () => {
-    setIsWalletConnected(false)
-    setWalletAddress("")
-  }
-
-  const sendTip = async () => {
-    if (!selectedTeam || !tipAmount || !isWalletConnected) return
+const sendTip = async () => {
+    // Fixed: Check if wallet is connected using the account state
+    if (!account || !selectedTeam || !tipAmount) {
+      console.log("Missing requirements:", { account , selectedTeam, tipAmount })
+      return
+    }
 
     const transaction: TipTransaction = {
       id: Date.now().toString(),
@@ -165,33 +158,7 @@ export default function TippingSystemMVP() {
             </div>
 
             <div className="flex items-center space-x-4">
-              {isWalletConnected ? (
-                <div className="flex items-center space-x-3">
-                  <Badge variant="secondary" className="bg-green-100 text-green-800 border-green-200">
-                    <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                    Connected
-                  </Badge>
-                  <span className="text-sm text-gray-600 font-mono">
-                    {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={disconnectWallet}
-                    className="border-violet-200 hover:bg-violet-50"
-                  >
-                    Disconnect
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  onClick={connectWallet}
-                  className="bg-gradient-to-r from-violet-600 to-teal-600 hover:from-violet-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
-                >
-                  <Wallet className="w-4 h-4 mr-2" />
-                  Connect Wallet
-                </Button>
-              )}
+              <ConnectButton />
             </div>
           </div>
         </div>
@@ -310,12 +277,13 @@ export default function TippingSystemMVP() {
                 </div>
 
                 <div className="flex space-x-2">
+
                   <Button
                     onClick={() => {
                       setSelectedTeam(team)
                       setShowTipModal(true)
                     }}
-                    disabled={!isWalletConnected}
+                    disabled={!isConnected}
                     className="flex-1 bg-gradient-to-r from-violet-600 to-teal-600 hover:from-violet-700 hover:to-teal-700 text-white shadow-md hover:shadow-lg transition-all duration-300"
                   >
                     <Send className="w-4 h-4 mr-2" />
@@ -459,7 +427,7 @@ export default function TippingSystemMVP() {
 
                 <Button
                   onClick={sendTip}
-                  disabled={!tipAmount || !isWalletConnected}
+                  disabled={!tipAmount || !isConnected}
                   className="w-full bg-gradient-to-r from-violet-600 to-teal-600 hover:from-violet-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
                 >
                   <Send className="w-4 h-4 mr-2" />
