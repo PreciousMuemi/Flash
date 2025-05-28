@@ -34,6 +34,23 @@ import {
   Flame,
 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
+import { initializeApp } from "firebase/app"
+import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, onSnapshot } from "firebase/firestore"
+
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCGfXY4qRGh1yS9oxSOolGarM0sEp0z7_w",
+  authDomain: "flash-5565e.firebaseapp.com",
+  projectId: "flash-5565e",
+  storageBucket: "flash-5565e.firebasestorage.app",
+  messagingSenderId: "40641862368",
+  appId: "1:40641862368:web:e968939b286f1dec26ce85",
+  measurementId: "G-2QGL13SVS8",
+}
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig)
+const db = getFirestore(app)
 
 // Types
 interface Team {
@@ -61,6 +78,7 @@ interface Grant {
   timestamp: string
   status: "pending" | "success" | "failed"
   message?: string
+  transactionHash?: string
 }
 
 interface VoteType {
@@ -99,6 +117,7 @@ export default function HackathonGrantsPlatform() {
   const [userRole, setUserRole] = useState<"judge" | "audience">("audience")
   const [hasVoted, setHasVoted] = useState(false)
   const [judgeBalance, setJudgeBalance] = useState(1000)
+  const [isLoading, setIsLoading] = useState(true)
 
   // Modal States
   const [showGrantModal, setShowGrantModal] = useState(false)
@@ -122,38 +141,79 @@ export default function HackathonGrantsPlatform() {
     slidesUrl: "",
   })
 
-  // Load data from localStorage on mount
+  // Initialize Analytics only on client side
   useEffect(() => {
-    const savedTeams = localStorage.getItem("hackathon-teams")
-    const savedGrants = localStorage.getItem("hackathon-grants")
-    const savedVotes = localStorage.getItem("hackathon-votes")
-    const savedWallet = localStorage.getItem("hackathon-wallet")
-    const savedRole = localStorage.getItem("hackathon-role")
-    const savedHasVoted = localStorage.getItem("hackathon-has-voted")
-
-    if (savedTeams) setTeams(JSON.parse(savedTeams))
-    if (savedGrants) setGrants(JSON.parse(savedGrants))
-    if (savedVotes) setVotes(JSON.parse(savedVotes))
-    if (savedWallet) {
-      setWalletAddress(savedWallet)
-      setIsWalletConnected(true)
+    if (typeof window !== "undefined") {
+      import("firebase/analytics").then(({ getAnalytics, isSupported }) => {
+        isSupported().then((supported) => {
+          if (supported) {
+            getAnalytics(app)
+          }
+        })
+      })
     }
-    if (savedRole) setUserRole(savedRole as "judge" | "audience")
-    if (savedHasVoted) setHasVoted(JSON.parse(savedHasVoted))
   }, [])
 
-  // Save data to localStorage
+  // Load data from Firebase on mount
   useEffect(() => {
-    localStorage.setItem("hackathon-teams", JSON.stringify(teams))
-  }, [teams])
+    const fetchData = async () => {
+      setIsLoading(true)
+      try {
+        // Fetch teams
+        const teamsSnapshot = await getDocs(collection(db, "teams"))
+        const teamsData = teamsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Team)
+        setTeams(teamsData)
 
-  useEffect(() => {
-    localStorage.setItem("hackathon-grants", JSON.stringify(grants))
-  }, [grants])
+        // Fetch grants
+        const grantsSnapshot = await getDocs(collection(db, "grants"))
+        const grantsData = grantsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Grant)
+        setGrants(grantsData)
 
-  useEffect(() => {
-    localStorage.setItem("hackathon-votes", JSON.stringify(votes))
-  }, [votes])
+        // Fetch votes
+        const votesSnapshot = await getDocs(collection(db, "votes"))
+        const votesData = votesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as VoteType)
+        setVotes(votesData)
+
+        // Check if user has voted
+        const savedWallet = localStorage.getItem("hackathon-wallet")
+        if (savedWallet) {
+          setWalletAddress(savedWallet)
+          setIsWalletConnected(true)
+        }
+
+        const savedRole = localStorage.getItem("hackathon-role")
+        if (savedRole) setUserRole(savedRole as "judge" | "audience")
+      } catch (error) {
+        console.error("Error fetching data:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+
+    // Set up real-time listeners
+    const unsubscribeTeams = onSnapshot(collection(db, "teams"), (snapshot) => {
+      const teamsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Team)
+      setTeams(teamsData)
+    })
+
+    const unsubscribeGrants = onSnapshot(collection(db, "grants"), (snapshot) => {
+      const grantsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Grant)
+      setGrants(grantsData)
+    })
+
+    const unsubscribeVotes = onSnapshot(collection(db, "votes"), (snapshot) => {
+      const votesData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as VoteType)
+      setVotes(votesData)
+    })
+
+    return () => {
+      unsubscribeTeams()
+      unsubscribeGrants()
+      unsubscribeVotes()
+    }
+  }, [])
 
   // Filtered teams
   const filteredTeams = teams.filter(
@@ -166,8 +226,13 @@ export default function HackathonGrantsPlatform() {
 
   // Sorted teams for leaderboard
   const leaderboardTeams = [...teams].sort((a, b) => {
-    const aScore = a.votes * 10 + a.totalGrants
-    const bScore = b.votes * 10 + b.totalGrants
+    const aVotes = a.votes || 0
+    const bVotes = b.votes || 0
+    const aGrants = a.totalGrants || 0
+    const bGrants = b.totalGrants || 0
+
+    const aScore = aVotes * 10 + aGrants
+    const bScore = bVotes * 10 + bGrants
     return bScore - aScore
   })
 
@@ -189,107 +254,195 @@ export default function HackathonGrantsPlatform() {
   }
 
   // Register Team
-  const registerTeam = () => {
+  const registerTeam = async () => {
     if (!registerForm.teamName || !registerForm.projectName || !registerForm.walletAddress) return
 
-    const newTeam: Team = {
-      id: Date.now().toString(),
-      name: registerForm.teamName,
-      projectName: registerForm.projectName,
-      description: registerForm.description,
-      category: registerForm.category,
-      walletAddress: registerForm.walletAddress,
-      prototypeUrl: registerForm.prototypeUrl,
-      slidesUrl: registerForm.slidesUrl,
-      image: "/placeholder.svg?height=100&width=100",
-      votes: 0,
-      totalGrants: 0,
-      grantCount: 0,
-      registeredAt: new Date().toISOString(),
+    try {
+      const newTeam = {
+        name: registerForm.teamName,
+        projectName: registerForm.projectName,
+        description: registerForm.description,
+        category: registerForm.category,
+        walletAddress: registerForm.walletAddress,
+        prototypeUrl: registerForm.prototypeUrl,
+        slidesUrl: registerForm.slidesUrl,
+        image: "/placeholder.svg?height=100&width=100",
+        votes: 0,
+        totalGrants: 0,
+        grantCount: 0,
+        registeredAt: new Date().toISOString(),
+      }
+
+      // Add to Firebase
+      const docRef = await addDoc(collection(db, "teams"), newTeam)
+
+      setShowRegisterModal(false)
+      setRegisterForm({
+        teamName: "",
+        projectName: "",
+        description: "",
+        category: "",
+        walletAddress: "",
+        prototypeUrl: "",
+        slidesUrl: "",
+      })
+    } catch (error) {
+      console.error("Error registering team:", error)
+    }
+  }
+
+  // Send Grant - With actual wallet transfer
+  const sendGrant = async (amount: number, message = "") => {
+    if (!selectedTeam || !isWalletConnected || userRole !== "judge") {
+      console.log("Grant failed: Missing requirements", { selectedTeam, isWalletConnected, userRole })
+      return
     }
 
-    setTeams((prev) => [...prev, newTeam])
-    setShowRegisterModal(false)
-    setRegisterForm({
-      teamName: "",
-      projectName: "",
-      description: "",
-      category: "",
-      walletAddress: "",
-      prototypeUrl: "",
-      slidesUrl: "",
+    if (amount <= 0 || isNaN(amount)) {
+      console.log("Grant failed: Invalid amount", amount)
+      return
+    }
+
+    try {
+      console.log("Starting grant process...", { amount, teamId: selectedTeam.id })
+
+      const grant = {
+        teamId: selectedTeam.id,
+        amount: amount,
+        judgeId: walletAddress,
+        judgeName: `Judge ${walletAddress.slice(-4)}`,
+        timestamp: new Date().toISOString(),
+        status: "pending" as const,
+        message: message,
+      }
+
+      // Add to Firebase
+      const docRef = await addDoc(collection(db, "grants"), grant)
+      console.log("Grant added to Firebase:", docRef.id)
+
+      const grantWithId = { id: docRef.id, ...grant }
+      setCurrentGrant(grantWithId as Grant)
+
+      // Simulate actual wallet transfer
+      setTimeout(async () => {
+        try {
+          console.log("Processing wallet transfer...")
+
+          // Here you would integrate with actual wallet/payment system
+          // For demo purposes, we'll simulate the transfer
+          const transferResult = await simulateWalletTransfer(walletAddress, selectedTeam.walletAddress, amount)
+          console.log("Transfer result:", transferResult)
+
+          const success = transferResult.success
+          const updatedGrant = {
+            ...grantWithId,
+            status: success ? ("success" as const) : ("failed" as const),
+            transactionHash: transferResult.transactionHash,
+          }
+
+          // Update in Firebase
+          await updateDoc(doc(db, "grants", docRef.id), {
+            status: updatedGrant.status,
+            transactionHash: transferResult.transactionHash || "",
+          })
+
+          setCurrentGrant(updatedGrant as Grant)
+
+          if (success) {
+            setJudgeBalance((prev) => prev - amount)
+
+            // Update team stats in Firebase
+            const teamRef = doc(db, "teams", selectedTeam.id)
+            await updateDoc(teamRef, {
+              totalGrants: (selectedTeam.totalGrants || 0) + amount,
+              grantCount: (selectedTeam.grantCount || 0) + 1,
+            })
+
+            // Show success message
+            console.log(`Successfully transferred $${amount} to ${selectedTeam.walletAddress}`)
+
+            setTimeout(() => {
+              setShowGrantModal(false)
+              setGrantAmount("")
+              setGrantMessage("")
+              setCurrentGrant(null)
+            }, 3000)
+          } else {
+            console.error("Transfer failed:", transferResult.error)
+          }
+        } catch (error) {
+          console.error("Error during transfer:", error)
+          // Update grant status to failed
+          await updateDoc(doc(db, "grants", docRef.id), {
+            status: "failed",
+          })
+          setCurrentGrant({ ...grantWithId, status: "failed" } as Grant)
+        }
+      }, 2000)
+    } catch (error) {
+      console.error("Error sending grant:", error)
+    }
+  }
+
+  // Simulate wallet transfer function
+  const simulateWalletTransfer = async (fromAddress: string, toAddress: string, amount: number) => {
+    console.log(`Simulating transfer: $${amount} from ${fromAddress} to ${toAddress}`)
+
+    // This is a simulation - replace with actual wallet integration
+    return new Promise<{ success: boolean; transactionHash?: string; error?: string }>((resolve) => {
+      setTimeout(() => {
+        // Simulate 95% success rate
+        const success = Math.random() > 0.05
+
+        if (success) {
+          // Generate a mock transaction hash
+          const transactionHash = `0x${Math.random().toString(16).substr(2, 64)}`
+          console.log(`Mock Transfer Success: $${amount}`)
+          console.log(`Transaction Hash: ${transactionHash}`)
+
+          resolve({
+            success: true,
+            transactionHash: transactionHash,
+          })
+        } else {
+          console.log("Mock Transfer Failed")
+          resolve({
+            success: false,
+            error: "Insufficient funds or network error",
+          })
+        }
+      }, 1000)
     })
   }
 
-  // Send Grant
-  const sendGrant = async (amount: number, message = "") => {
-    if (!selectedTeam || !isWalletConnected || userRole !== "judge") return
+  // Vote for Team - Allow multiple votes
+  const voteForTeam = async (teamId: string) => {
+    if (!isWalletConnected) return
 
-    const grant: Grant = {
-      id: Date.now().toString(),
-      teamId: selectedTeam.id,
-      amount: amount,
-      judgeId: walletAddress,
-      judgeName: `Judge ${walletAddress.slice(-4)}`,
-      timestamp: new Date().toISOString(),
-      status: "pending",
-      message: message,
-    }
-
-    setCurrentGrant(grant)
-    setGrants((prev) => [grant, ...prev])
-
-    // Simulate transaction processing
-    setTimeout(() => {
-      const success = Math.random() > 0.05 // 95% success rate
-      const updatedGrant = {
-        ...grant,
-        status: success ? ("success" as const) : ("failed" as const),
+    try {
+      const vote = {
+        teamId: teamId,
+        voterAddress: walletAddress,
+        timestamp: new Date().toISOString(),
       }
 
-      setCurrentGrant(updatedGrant)
-      setGrants((prev) => prev.map((g) => (g.id === grant.id ? updatedGrant : g)))
+      // Add to Firebase
+      await addDoc(collection(db, "votes"), vote)
 
-      if (success) {
-        setJudgeBalance((prev) => prev - amount)
-        setTeams((prev) =>
-          prev.map((team) =>
-            team.id === selectedTeam.id
-              ? {
-                  ...team,
-                  totalGrants: team.totalGrants + amount,
-                  grantCount: team.grantCount + 1,
-                }
-              : team,
-          ),
-        )
-
-        setTimeout(() => {
-          setShowGrantModal(false)
-          setGrantAmount("")
-          setGrantMessage("")
-          setCurrentGrant(null)
-        }, 2000)
+      // Update team votes in Firebase
+      const teamToUpdate = teams.find((team) => team.id === teamId)
+      if (teamToUpdate) {
+        const teamRef = doc(db, "teams", teamId)
+        await updateDoc(teamRef, {
+          votes: teamToUpdate.votes + 1,
+        })
       }
-    }, 2000)
-  }
 
-  // Vote for Team
-  const voteForTeam = (teamId: string) => {
-    if (!isWalletConnected || hasVoted) return
-
-    const vote: VoteType = {
-      id: Date.now().toString(),
-      teamId: teamId,
-      voterAddress: walletAddress,
-      timestamp: new Date().toISOString(),
+      // Don't set hasVoted to true anymore - allow multiple votes
+      setShowVoteModal(false)
+    } catch (error) {
+      console.error("Error voting for team:", error)
     }
-
-    setVotes((prev) => [...prev, vote])
-    setTeams((prev) => prev.map((team) => (team.id === teamId ? { ...team, votes: team.votes + 1 } : team)))
-    setHasVoted(true)
-    localStorage.setItem("hackathon-has-voted", "true")
-    setShowVoteModal(false)
   }
 
   // Set Role
@@ -299,7 +452,21 @@ export default function HackathonGrantsPlatform() {
   }
 
   const getQRCodeURL = (team: Team) => {
+    if (typeof window === "undefined") {
+      return team.prototypeUrl || `/team/${team.id}`
+    }
     return team.prototypeUrl || `${window.location.origin}/team/${team.id}`
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-t-pink-500 border-r-transparent border-b-orange-500 border-l-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-xl font-medium">Loading hackathon data...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -589,11 +756,11 @@ export default function HackathonGrantsPlatform() {
                             setSelectedTeam(team)
                             setShowVoteModal(true)
                           }}
-                          disabled={!isWalletConnected || hasVoted}
+                          disabled={!isWalletConnected}
                           className="flex-1 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-black font-bold"
                         >
                           <Heart className="w-4 h-4 mr-2" />
-                          {hasVoted ? "Voted" : "Vote"}
+                          Vote
                         </Button>
                       )}
 
@@ -647,7 +814,11 @@ export default function HackathonGrantsPlatform() {
 
             <div className="space-y-4">
               {leaderboardTeams.map((team, index) => {
-                const score = team.votes * 10 + team.totalGrants
+                // Make sure we're calculating the score with proper type handling
+                const teamVotes = team.votes || 0
+                const teamGrants = team.totalGrants || 0
+                const score = teamVotes * 10 + teamGrants
+
                 const getRankIcon = (rank: number) => {
                   switch (rank) {
                     case 0:
@@ -694,11 +865,11 @@ export default function HackathonGrantsPlatform() {
                         <div className="text-right space-y-2">
                           <div className="flex items-center space-x-4">
                             <div className="text-center">
-                              <p className="text-2xl font-bold text-pink-400">{team.votes}</p>
+                              <p className="text-2xl font-bold text-pink-400">{teamVotes}</p>
                               <p className="text-xs text-gray-400">Votes</p>
                             </div>
                             <div className="text-center">
-                              <p className="text-2xl font-bold text-green-400">${team.totalGrants}</p>
+                              <p className="text-2xl font-bold text-green-400">${teamGrants}</p>
                               <p className="text-xs text-gray-400">Grants</p>
                             </div>
                             <div className="text-center">
@@ -1031,10 +1202,7 @@ export default function HackathonGrantsPlatform() {
               <Avatar className="w-10 h-10">
                 <AvatarImage src={selectedTeam?.image || "/placeholder.svg"} alt={selectedTeam?.name} />
                 <AvatarFallback className="bg-green-500 text-black">
-                  {selectedTeam?.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")}
+                  {selectedTeam?.name.split(" ").map((n) => n[0])}
                 </AvatarFallback>
               </Avatar>
               <span>Grant to {selectedTeam?.name}</span>
@@ -1140,7 +1308,13 @@ export default function HackathonGrantsPlatform() {
 
                 <Button
                   onClick={() => sendGrant(Number.parseFloat(grantAmount), grantMessage)}
-                  disabled={!grantAmount || !isWalletConnected || judgeBalance < Number.parseFloat(grantAmount)}
+                  disabled={
+                    !grantAmount ||
+                    !isWalletConnected ||
+                    judgeBalance < Number.parseFloat(grantAmount) ||
+                    isNaN(Number.parseFloat(grantAmount)) ||
+                    Number.parseFloat(grantAmount) <= 0
+                  }
                   className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-black font-bold py-4"
                 >
                   <DollarSign className="w-5 h-5 mr-2" />
@@ -1163,10 +1337,7 @@ export default function HackathonGrantsPlatform() {
             <Avatar className="w-24 h-24 mx-auto">
               <AvatarImage src={selectedTeam?.image || "/placeholder.svg"} alt={selectedTeam?.name} />
               <AvatarFallback className="bg-gradient-to-r from-pink-500 to-orange-500 text-black text-2xl font-bold">
-                {selectedTeam?.name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")}
+                {selectedTeam?.name.split(" ").map((n) => n[0])}
               </AvatarFallback>
             </Avatar>
 
@@ -1176,18 +1347,15 @@ export default function HackathonGrantsPlatform() {
             </div>
 
             <div className="bg-gray-800 rounded-lg p-4">
-              <p className="text-gray-300 text-sm">
-                You can only vote once! Make sure this is the team you want to support.
-              </p>
+              <p className="text-gray-300 text-sm">Click to vote for this team! You can vote multiple times.</p>
             </div>
 
             <Button
               onClick={() => selectedTeam && voteForTeam(selectedTeam.id)}
-              disabled={hasVoted}
               className="w-full bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-black font-bold py-4"
             >
               <Heart className="w-5 h-5 mr-2" />
-              {hasVoted ? "Already Voted" : "Cast Your Vote"}
+              Cast Your Vote
             </Button>
           </div>
         </DialogContent>
