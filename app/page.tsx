@@ -1,15 +1,26 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Search,
   Wallet,
@@ -32,10 +43,18 @@ import {
   Vote,
   Target,
   Flame,
-} from "lucide-react"
-import { QRCodeSVG } from "qrcode.react"
-import { initializeApp } from "firebase/app"
-import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, onSnapshot } from "firebase/firestore"
+} from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { initializeApp } from "firebase/app";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  updateDoc,
+  onSnapshot,
+} from "firebase/firestore";
 
 // Firebase configuration
 const firebaseConfig = {
@@ -46,49 +65,49 @@ const firebaseConfig = {
   messagingSenderId: "40641862368",
   appId: "1:40641862368:web:e968939b286f1dec26ce85",
   measurementId: "G-2QGL13SVS8",
-}
+};
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig)
-const db = getFirestore(app)
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 // Types
 interface Team {
-  id: string
-  name: string
-  projectName: string
-  description: string
-  category: string
-  walletAddress: string
-  prototypeUrl: string
-  slidesUrl: string
-  image: string
-  votes: number
-  totalGrants: number
-  grantCount: number
-  registeredAt: string
+  id: string;
+  name: string;
+  projectName: string;
+  description: string;
+  category: string;
+  walletAddress: string;
+  prototypeUrl: string;
+  slidesUrl: string;
+  image: string;
+  votes: number;
+  totalGrants: number;
+  grantCount: number;
+  registeredAt: string;
 }
 
 interface Grant {
-  id: string
-  teamId: string
-  amount: number
-  judgeId: string
-  judgeName: string
-  timestamp: string
-  status: "pending" | "success" | "failed"
-  message?: string
-  transactionHash?: string
+  id: string;
+  teamId: string;
+  amount: number;
+  judgeId: string;
+  judgeName: string;
+  timestamp: string;
+  status: "pending" | "success" | "failed";
+  message?: string;
+  transactionHash?: string;
 }
 
 interface VoteType {
-  id: string
-  teamId: string
-  voterAddress: string
-  timestamp: string
+  id: string;
+  teamId: string;
+  voterAddress: string;
+  timestamp: string;
 }
 
-type ViewMode = "teams" | "register" | "judge" | "leaderboard" | "analytics"
+type ViewMode = "teams" | "register" | "judge" | "leaderboard" | "analytics";
 
 const categories = [
   "AI/ML",
@@ -101,34 +120,36 @@ const categories = [
   "EdTech",
   "Gaming",
   "Other",
-]
+];
 
 export default function HackathonGrantsPlatform() {
   // State Management
-  const [currentView, setCurrentView] = useState<ViewMode>("teams")
-  const [teams, setTeams] = useState<Team[]>([])
-  const [grants, setGrants] = useState<Grant[]>([])
-  const [votes, setVotes] = useState<VoteType[]>([])
-  const [searchTerm, setSearchTerm] = useState("")
-  const [selectedCategory, setSelectedCategory] = useState("All")
-  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
-  const [isWalletConnected, setIsWalletConnected] = useState(false)
-  const [walletAddress, setWalletAddress] = useState("")
-  const [userRole, setUserRole] = useState<"judge" | "audience">("audience")
-  const [hasVoted, setHasVoted] = useState(false)
-  const [judgeBalance, setJudgeBalance] = useState(1000)
-  const [isLoading, setIsLoading] = useState(true)
+  const [currentView, setCurrentView] = useState<ViewMode>("teams");
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [grants, setGrants] = useState<Grant[]>([]);
+  const [votes, setVotes] = useState<VoteType[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
+  const [isWalletConnected, setIsWalletConnected] = useState(false);
+  const [walletAddress, setWalletAddress] = useState("");
+  const [userRole, setUserRole] = useState<"judge" | "audience">("audience");
+  const [hasVoted, setHasVoted] = useState(false);
+  const [judgeBalance, setJudgeBalance] = useState(1000);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [userValidAccess, setuserValidAccess] = useState(false);
 
   // Modal States
-  const [showGrantModal, setShowGrantModal] = useState(false)
-  const [showQRModal, setShowQRModal] = useState(false)
-  const [showRegisterModal, setShowRegisterModal] = useState(false)
-  const [showVoteModal, setShowVoteModal] = useState(false)
+  const [showGrantModal, setShowGrantModal] = useState(false);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showVoteModal, setShowVoteModal] = useState(false);
 
   // Form States
-  const [grantAmount, setGrantAmount] = useState("")
-  const [grantMessage, setGrantMessage] = useState("")
-  const [currentGrant, setCurrentGrant] = useState<Grant | null>(null)
+  const [grantAmount, setGrantAmount] = useState("");
+  const [grantMessage, setGrantMessage] = useState("");
+  const [currentGrant, setCurrentGrant] = useState<Grant | null>(null);
 
   // Registration Form
   const [registerForm, setRegisterForm] = useState({
@@ -139,7 +160,7 @@ export default function HackathonGrantsPlatform() {
     walletAddress: "",
     prototypeUrl: "",
     slidesUrl: "",
-  })
+  });
 
   // Initialize Analytics only on client side
   useEffect(() => {
@@ -147,73 +168,88 @@ export default function HackathonGrantsPlatform() {
       import("firebase/analytics").then(({ getAnalytics, isSupported }) => {
         isSupported().then((supported) => {
           if (supported) {
-            getAnalytics(app)
+            getAnalytics(app);
           }
-        })
-      })
+        });
+      });
     }
-  }, [])
+  }, []);
 
   // Load data from Firebase on mount
   useEffect(() => {
     const fetchData = async () => {
-      setIsLoading(true)
+      setIsLoading(true);
       try {
         // Fetch teams
-        const teamsSnapshot = await getDocs(collection(db, "teams"))
-        const teamsData = teamsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Team)
-        setTeams(teamsData)
+        const teamsSnapshot = await getDocs(collection(db, "teams"));
+        const teamsData = teamsSnapshot.docs.map(
+          (doc) => ({ id: doc.id, ...doc.data() } as Team)
+        );
+        setTeams(teamsData);
 
         // Fetch grants
-        const grantsSnapshot = await getDocs(collection(db, "grants"))
-        const grantsData = grantsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Grant)
-        setGrants(grantsData)
+        const grantsSnapshot = await getDocs(collection(db, "grants"));
+        const grantsData = grantsSnapshot.docs.map(
+          (doc) => ({ id: doc.id, ...doc.data() } as Grant)
+        );
+        setGrants(grantsData);
 
         // Fetch votes
-        const votesSnapshot = await getDocs(collection(db, "votes"))
-        const votesData = votesSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as VoteType)
-        setVotes(votesData)
+        const votesSnapshot = await getDocs(collection(db, "votes"));
+        const votesData = votesSnapshot.docs.map(
+          (doc) => ({ id: doc.id, ...doc.data() } as VoteType)
+        );
+        setVotes(votesData);
 
         // Check if user has voted
-        const savedWallet = localStorage.getItem("hackathon-wallet")
+        const savedWallet = localStorage.getItem("hackathon-wallet");
         if (savedWallet) {
-          setWalletAddress(savedWallet)
-          setIsWalletConnected(true)
+          setWalletAddress(savedWallet);
+          setIsWalletConnected(true);
         }
 
-        const savedRole = localStorage.getItem("hackathon-role")
-        if (savedRole) setUserRole(savedRole as "judge" | "audience")
+        const savedRole = localStorage.getItem("hackathon-role");
+        if (savedRole) setUserRole(savedRole as "judge" | "audience");
       } catch (error) {
-        console.error("Error fetching data:", error)
+        console.error("Error fetching data:", error);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
 
-    fetchData()
+    fetchData();
 
     // Set up real-time listeners
     const unsubscribeTeams = onSnapshot(collection(db, "teams"), (snapshot) => {
-      const teamsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Team)
-      setTeams(teamsData)
-    })
+      const teamsData = snapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as Team)
+      );
+      setTeams(teamsData);
+    });
 
-    const unsubscribeGrants = onSnapshot(collection(db, "grants"), (snapshot) => {
-      const grantsData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Grant)
-      setGrants(grantsData)
-    })
+    const unsubscribeGrants = onSnapshot(
+      collection(db, "grants"),
+      (snapshot) => {
+        const grantsData = snapshot.docs.map(
+          (doc) => ({ id: doc.id, ...doc.data() } as Grant)
+        );
+        setGrants(grantsData);
+      }
+    );
 
     const unsubscribeVotes = onSnapshot(collection(db, "votes"), (snapshot) => {
-      const votesData = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as VoteType)
-      setVotes(votesData)
-    })
+      const votesData = snapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as VoteType)
+      );
+      setVotes(votesData);
+    });
 
     return () => {
-      unsubscribeTeams()
-      unsubscribeGrants()
-      unsubscribeVotes()
-    }
-  }, [])
+      unsubscribeTeams();
+      unsubscribeGrants();
+      unsubscribeVotes();
+    };
+  }, []);
 
   // Filtered teams
   const filteredTeams = teams.filter(
@@ -221,41 +257,46 @@ export default function HackathonGrantsPlatform() {
       (selectedCategory === "All" || team.category === selectedCategory) &&
       (team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         team.projectName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        team.description.toLowerCase().includes(searchTerm.toLowerCase())),
-  )
+        team.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   // Sorted teams for leaderboard
   const leaderboardTeams = [...teams].sort((a, b) => {
-    const aVotes = a.votes || 0
-    const bVotes = b.votes || 0
-    const aGrants = a.totalGrants || 0
-    const bGrants = b.totalGrants || 0
+    const aVotes = a.votes || 0;
+    const bVotes = b.votes || 0;
+    const aGrants = a.totalGrants || 0;
+    const bGrants = b.totalGrants || 0;
 
-    const aScore = aVotes * 10 + aGrants
-    const bScore = bVotes * 10 + bGrants
-    return bScore - aScore
-  })
+    const aScore = aVotes * 10 + aGrants;
+    const bScore = bVotes * 10 + bGrants;
+    return bScore - aScore;
+  });
 
   // Connect Wallet
   const connectWallet = async () => {
     // Simulate wallet connection
     setTimeout(() => {
-      const mockAddress = "0xa1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0"
-      setIsWalletConnected(true)
-      setWalletAddress(mockAddress)
-      localStorage.setItem("hackathon-wallet", mockAddress)
-    }, 1000)
-  }
+      const mockAddress = "0xa1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0";
+      setIsWalletConnected(true);
+      setWalletAddress(mockAddress);
+      localStorage.setItem("hackathon-wallet", mockAddress);
+    }, 1000);
+  };
 
   const disconnectWallet = () => {
-    setIsWalletConnected(false)
-    setWalletAddress("")
-    localStorage.removeItem("hackathon-wallet")
-  }
+    setIsWalletConnected(false);
+    setWalletAddress("");
+    localStorage.removeItem("hackathon-wallet");
+  };
 
   // Register Team
   const registerTeam = async () => {
-    if (!registerForm.teamName || !registerForm.projectName || !registerForm.walletAddress) return
+    if (
+      !registerForm.teamName ||
+      !registerForm.projectName ||
+      !registerForm.walletAddress
+    )
+      return;
 
     try {
       const newTeam = {
@@ -271,12 +312,12 @@ export default function HackathonGrantsPlatform() {
         totalGrants: 0,
         grantCount: 0,
         registeredAt: new Date().toISOString(),
-      }
+      };
 
       // Add to Firebase
-      const docRef = await addDoc(collection(db, "teams"), newTeam)
+      const docRef = await addDoc(collection(db, "teams"), newTeam);
 
-      setShowRegisterModal(false)
+      setShowRegisterModal(false);
       setRegisterForm({
         teamName: "",
         projectName: "",
@@ -285,26 +326,31 @@ export default function HackathonGrantsPlatform() {
         walletAddress: "",
         prototypeUrl: "",
         slidesUrl: "",
-      })
+      });
     } catch (error) {
-      console.error("Error registering team:", error)
+      console.error("Error registering team:", error);
     }
-  }
+  };
 
   // Send Grant - With actual wallet transfer
   const sendGrant = async (amount: number, message = "") => {
     if (!selectedTeam || !isWalletConnected || userRole !== "judge") {
-      console.log("Grant failed: Missing requirements", { selectedTeam, isWalletConnected, userRole })
-      return
+      alert(
+        `Grant failed: Missing requirements\n\nTeam: ${selectedTeam}\nWallet Connected: ${isWalletConnected}\nRole: ${userRole}`
+      );
+      return;
     }
 
     if (amount <= 0 || isNaN(amount)) {
-      console.log("Grant failed: Invalid amount", amount)
-      return
+      console.log("Grant failed: Invalid amount", amount);
+      return;
     }
 
     try {
-      console.log("Starting grant process...", { amount, teamId: selectedTeam.id })
+      console.log("Starting grant process...", {
+        amount,
+        teamId: selectedTeam.id,
+      });
 
       const grant = {
         teamId: selectedTeam.id,
@@ -314,149 +360,187 @@ export default function HackathonGrantsPlatform() {
         timestamp: new Date().toISOString(),
         status: "pending" as const,
         message: message,
-      }
+      };
 
       // Add to Firebase
-      const docRef = await addDoc(collection(db, "grants"), grant)
-      console.log("Grant added to Firebase:", docRef.id)
+      const docRef = await addDoc(collection(db, "grants"), grant);
+      console.log("Grant added to Firebase:", docRef.id);
 
-      const grantWithId = { id: docRef.id, ...grant }
-      setCurrentGrant(grantWithId as Grant)
+      const grantWithId = { id: docRef.id, ...grant };
+      setCurrentGrant(grantWithId as Grant);
 
       // Simulate actual wallet transfer
       setTimeout(async () => {
         try {
-          console.log("Processing wallet transfer...")
+          console.log("Processing wallet transfer...");
 
           // Here you would integrate with actual wallet/payment system
           // For demo purposes, we'll simulate the transfer
-          const transferResult = await simulateWalletTransfer(walletAddress, selectedTeam.walletAddress, amount)
-          console.log("Transfer result:", transferResult)
+          const transferResult = await simulateWalletTransfer(
+            walletAddress,
+            selectedTeam.walletAddress,
+            amount
+          );
+          console.log("Transfer result:", transferResult);
 
-          const success = transferResult.success
+          const success = transferResult.success;
           const updatedGrant = {
             ...grantWithId,
             status: success ? ("success" as const) : ("failed" as const),
             transactionHash: transferResult.transactionHash,
-          }
+          };
 
           // Update in Firebase
           await updateDoc(doc(db, "grants", docRef.id), {
             status: updatedGrant.status,
             transactionHash: transferResult.transactionHash || "",
-          })
+          });
 
-          setCurrentGrant(updatedGrant as Grant)
+          setCurrentGrant(updatedGrant as Grant);
 
           if (success) {
-            setJudgeBalance((prev) => prev - amount)
+            setJudgeBalance((prev) => prev - amount);
 
             // Update team stats in Firebase
-            const teamRef = doc(db, "teams", selectedTeam.id)
+            const teamRef = doc(db, "teams", selectedTeam.id);
             await updateDoc(teamRef, {
               totalGrants: (selectedTeam.totalGrants || 0) + amount,
               grantCount: (selectedTeam.grantCount || 0) + 1,
-            })
+            });
 
             // Show success message
-            console.log(`Successfully transferred $${amount} to ${selectedTeam.walletAddress}`)
+            console.log(
+              `Successfully transferred $${amount} to ${selectedTeam.walletAddress}`
+            );
 
             setTimeout(() => {
-              setShowGrantModal(false)
-              setGrantAmount("")
-              setGrantMessage("")
-              setCurrentGrant(null)
-            }, 3000)
+              setShowGrantModal(false);
+              setGrantAmount("");
+              setGrantMessage("");
+              setCurrentGrant(null);
+            }, 3000);
           } else {
-            console.error("Transfer failed:", transferResult.error)
+            console.error("Transfer failed:", transferResult.error);
           }
         } catch (error) {
-          console.error("Error during transfer:", error)
+          console.error("Error during transfer:", error);
           // Update grant status to failed
           await updateDoc(doc(db, "grants", docRef.id), {
             status: "failed",
-          })
-          setCurrentGrant({ ...grantWithId, status: "failed" } as Grant)
+          });
+          setCurrentGrant({ ...grantWithId, status: "failed" } as Grant);
         }
-      }, 2000)
+      }, 2000);
     } catch (error) {
-      console.error("Error sending grant:", error)
+      console.error("Error sending grant:", error);
     }
-  }
+  };
 
   // Simulate wallet transfer function
-  const simulateWalletTransfer = async (fromAddress: string, toAddress: string, amount: number) => {
-    console.log(`Simulating transfer: $${amount} from ${fromAddress} to ${toAddress}`)
+  const simulateWalletTransfer = async (
+    fromAddress: string,
+    toAddress: string,
+    amount: number
+  ) => {
+    console.log(
+      `Simulating transfer: $${amount} from ${fromAddress} to ${toAddress}`
+    );
 
     // This is a simulation - replace with actual wallet integration
-    return new Promise<{ success: boolean; transactionHash?: string; error?: string }>((resolve) => {
+    return new Promise<{
+      success: boolean;
+      transactionHash?: string;
+      error?: string;
+    }>((resolve) => {
       setTimeout(() => {
         // Simulate 95% success rate
-        const success = Math.random() > 0.05
+        const success = Math.random() > 0.05;
 
         if (success) {
           // Generate a mock transaction hash
-          const transactionHash = `0x${Math.random().toString(16).substr(2, 64)}`
-          console.log(`Mock Transfer Success: $${amount}`)
-          console.log(`Transaction Hash: ${transactionHash}`)
+          const transactionHash = `0x${Math.random()
+            .toString(16)
+            .substr(2, 64)}`;
+          console.log(`Mock Transfer Success: $${amount}`);
+          console.log(`Transaction Hash: ${transactionHash}`);
 
           resolve({
             success: true,
             transactionHash: transactionHash,
-          })
+          });
         } else {
-          console.log("Mock Transfer Failed")
+          console.log("Mock Transfer Failed");
           resolve({
             success: false,
             error: "Insufficient funds or network error",
-          })
+          });
         }
-      }, 1000)
-    })
-  }
+      }, 1000);
+    });
+  };
 
   // Vote for Team - Allow multiple votes
   const voteForTeam = async (teamId: string) => {
-    if (!isWalletConnected) return
+    if (!isWalletConnected) return;
 
     try {
       const vote = {
         teamId: teamId,
         voterAddress: walletAddress,
         timestamp: new Date().toISOString(),
-      }
+      };
 
       // Add to Firebase
-      await addDoc(collection(db, "votes"), vote)
+      await addDoc(collection(db, "votes"), vote);
 
       // Update team votes in Firebase
-      const teamToUpdate = teams.find((team) => team.id === teamId)
+      const teamToUpdate = teams.find((team) => team.id === teamId);
       if (teamToUpdate) {
-        const teamRef = doc(db, "teams", teamId)
+        const teamRef = doc(db, "teams", teamId);
         await updateDoc(teamRef, {
           votes: teamToUpdate.votes + 1,
-        })
+        });
       }
 
       // Don't set hasVoted to true anymore - allow multiple votes
-      setShowVoteModal(false)
+      setShowVoteModal(false);
     } catch (error) {
-      console.error("Error voting for team:", error)
+      console.error("Error voting for team:", error);
     }
-  }
+  };
 
   // Set Role
   const setRole = (role: "judge" | "audience") => {
-    setUserRole(role)
-    localStorage.setItem("hackathon-role", role)
-  }
+    setUserRole(role);
+
+    if (userRole == "judge") {
+      setuserValidAccess(true);
+    console.log(userValidAccess);
+    }else{
+      setuserValidAccess(false);
+    console.log(userValidAccess);
+
+}
+
+    localStorage.setItem("hackathon-role", role);
+  };
 
   const getQRCodeURL = (team: Team) => {
     if (typeof window === "undefined") {
-      return team.prototypeUrl || `/team/${team.id}`
+      return team.prototypeUrl || `/team/${team.id}`;
     }
-    return team.prototypeUrl || `${window.location.origin}/team/${team.id}`
-  }
+    return team.prototypeUrl || `${window.location.origin}/team/${team.id}`;
+  };
+
+  // wilfred.
+  // const checkUserRole = (role:any):any=> {
+  //   console.log(role);
+
+  //   if (userRole == role) {
+  //   console.log(role);
+  //     setuserValidAccess(true);
+  //   }
+  // };
 
   if (isLoading) {
     return (
@@ -466,7 +550,7 @@ export default function HackathonGrantsPlatform() {
           <p className="text-xl font-medium">Loading hackathon data...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -491,14 +575,22 @@ export default function HackathonGrantsPlatform() {
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-400 to-orange-400 bg-clip-text text-transparent">
                   HackGrants
                 </h1>
-                <p className="text-xs text-gray-400">Live Micro-Grants Platform</p>
+                <p className="text-xs text-gray-400">
+                  Live Micro-Grants Platform
+                </p>
               </div>
             </div>
 
             <div className="flex items-center space-x-4">
-              <Tabs value={currentView} onValueChange={(value) => setCurrentView(value as ViewMode)}>
+              <Tabs
+                value={currentView}
+                onValueChange={(value) => setCurrentView(value as ViewMode)}
+              >
                 <TabsList className="bg-gray-800 border border-gray-700">
-                  <TabsTrigger value="teams" className="data-[state=active]:bg-pink-500 data-[state=active]:text-black">
+                  <TabsTrigger
+                    value="teams"
+                    className="data-[state=active]:bg-pink-500 data-[state=active]:text-black"
+                  >
                     <Users className="w-4 h-4 mr-2" />
                     Teams
                   </TabsTrigger>
@@ -509,17 +601,24 @@ export default function HackathonGrantsPlatform() {
                     <Trophy className="w-4 h-4 mr-2" />
                     Leaderboard
                   </TabsTrigger>
-                  <TabsTrigger value="judge" className="data-[state=active]:bg-pink-500 data-[state=active]:text-black">
-                    <DollarSign className="w-4 h-4 mr-2" />
-                    Judge Panel
-                  </TabsTrigger>
-                  <TabsTrigger
-                    value="analytics"
-                    className="data-[state=active]:bg-orange-500 data-[state=active]:text-black"
-                  >
-                    <BarChart3 className="w-4 h-4 mr-2" />
-                    Analytics
-                  </TabsTrigger>
+                  {userValidAccess && (
+                    <>
+                      <TabsTrigger
+                        value="judge"
+                        className="data-[state=active]:bg-pink-500 data-[state=active]:text-black"
+                      >
+                        <DollarSign className="w-4 h-4 mr-2" />
+                        Judge Panel
+                      </TabsTrigger>
+                      <TabsTrigger
+                        value="analytics"
+                        className="data-[state=active]:bg-orange-500 data-[state=active]:text-black"
+                      >
+                        <BarChart3 className="w-4 h-4 mr-2" />
+                        Analytics
+                      </TabsTrigger>
+                    </>
+                  )}
                 </TabsList>
               </Tabs>
 
@@ -566,7 +665,9 @@ export default function HackathonGrantsPlatform() {
                 onClick={() => setRole("audience")}
                 variant={userRole === "audience" ? "default" : "outline"}
                 className={
-                  userRole === "audience" ? "bg-pink-500 text-black" : "border-gray-600 text-gray-300 hover:bg-gray-800"
+                  userRole === "audience"
+                    ? "bg-pink-500 text-black"
+                    : "border-gray-600 text-black hover:text-white hover:bg-gray-800"
                 }
               >
                 <Heart className="w-4 h-4 mr-2" />
@@ -576,7 +677,9 @@ export default function HackathonGrantsPlatform() {
                 onClick={() => setRole("judge")}
                 variant={userRole === "judge" ? "default" : "outline"}
                 className={
-                  userRole === "judge" ? "bg-orange-500 text-black" : "border-gray-600 text-gray-300 hover:bg-gray-800"
+                  userRole === "judge"
+                    ? "bg-orange-500 text-black"
+                    : "border-gray-600 text-gray-300 hover:text-white hover:bg-gray-800"
                 }
               >
                 <DollarSign className="w-4 h-4 mr-2" />
@@ -595,7 +698,9 @@ export default function HackathonGrantsPlatform() {
                 Hackathon Teams
               </h2>
               <p className="text-xl text-gray-300 mb-8">
-                {userRole === "judge" ? "Grant micro-funds to promising teams! 💰" : "Vote for your favorite team! 🗳️"}
+                {userRole === "judge"
+                  ? "Grant micro-funds to promising teams! 💰"
+                  : "Vote for your favorite team! 🗳️"}
               </p>
 
               <Button
@@ -624,12 +729,14 @@ export default function HackathonGrantsPlatform() {
                 {["All", ...categories].map((category) => (
                   <Button
                     key={category}
-                    variant={selectedCategory === category ? "default" : "outline"}
+                    variant={
+                      selectedCategory === category ? "default" : "outline"
+                    }
                     onClick={() => setSelectedCategory(category)}
                     className={`rounded-full ${
                       selectedCategory === category
-                        ? "bg-pink-500 text-black"
-                        : "border-gray-600 text-gray-300 hover:bg-gray-800"
+                        ? "bg-pink-500 text-white"
+                        : "border-gray-600 text-black hover:bg-gray-800 hover:text-white"
                     }`}
                   >
                     {category}
@@ -645,7 +752,9 @@ export default function HackathonGrantsPlatform() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-gray-400 text-sm">Total Teams</p>
-                      <p className="text-3xl font-bold text-white">{teams.length}</p>
+                      <p className="text-3xl font-bold text-white">
+                        {teams.length}
+                      </p>
                     </div>
                     <Users className="w-8 h-8 text-pink-400" />
                   </div>
@@ -657,7 +766,9 @@ export default function HackathonGrantsPlatform() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-gray-400 text-sm">Total Votes</p>
-                      <p className="text-3xl font-bold text-white">{votes.length}</p>
+                      <p className="text-3xl font-bold text-white">
+                        {votes.length}
+                      </p>
                     </div>
                     <Vote className="w-8 h-8 text-orange-400" />
                   </div>
@@ -670,7 +781,10 @@ export default function HackathonGrantsPlatform() {
                     <div>
                       <p className="text-gray-400 text-sm">Grants Given</p>
                       <p className="text-3xl font-bold text-white">
-                        ${grants.filter((g) => g.status === "success").reduce((sum, g) => sum + g.amount, 0)}
+                        $
+                        {grants
+                          .filter((g) => g.status === "success")
+                          .reduce((sum, g) => sum + g.amount, 0)}
                       </p>
                     </div>
                     <DollarSign className="w-8 h-8 text-green-400" />
@@ -683,7 +797,9 @@ export default function HackathonGrantsPlatform() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-gray-400 text-sm">Active Projects</p>
-                      <p className="text-3xl font-bold text-white">{teams.filter((t) => t.prototypeUrl).length}</p>
+                      <p className="text-3xl font-bold text-white">
+                        {teams.filter((t) => t.prototypeUrl).length}
+                      </p>
                     </div>
                     <Target className="w-8 h-8 text-purple-400" />
                   </div>
@@ -700,16 +816,23 @@ export default function HackathonGrantsPlatform() {
                 >
                   <CardHeader className="pb-4">
                     <div className="flex items-center justify-between mb-4">
-                      <Badge className="bg-pink-500/20 text-pink-400 border-pink-500/30">{team.category}</Badge>
+                      <Badge className="bg-pink-500/20 text-pink-400 border-pink-500/30">
+                        {team.category}
+                      </Badge>
                       <div className="flex items-center space-x-2">
                         <Heart className="w-4 h-4 text-red-400" />
-                        <span className="text-sm text-gray-400">{team.votes}</span>
+                        <span className="text-sm text-gray-400">
+                          {team.votes}
+                        </span>
                       </div>
                     </div>
 
                     <div className="flex items-center space-x-4">
                       <Avatar className="w-16 h-16 ring-2 ring-pink-500/30">
-                        <AvatarImage src={team.image || "/placeholder.svg"} alt={team.name} />
+                        <AvatarImage
+                          src={team.image || "/placeholder.svg"}
+                          alt={team.name}
+                        />
                         <AvatarFallback className="bg-gradient-to-r from-pink-500 to-orange-500 text-black text-lg font-bold">
                           {team.name
                             .split(" ")
@@ -718,9 +841,15 @@ export default function HackathonGrantsPlatform() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <CardTitle className="text-lg text-white">{team.name}</CardTitle>
-                        <p className="text-sm text-pink-400 font-medium">{team.projectName}</p>
-                        <p className="text-xs text-gray-400 mt-1">{team.description.slice(0, 80)}...</p>
+                        <CardTitle className="text-lg text-white">
+                          {team.name}
+                        </CardTitle>
+                        <p className="text-sm text-pink-400 font-medium">
+                          {team.projectName}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {team.description.slice(0, 80)}...
+                        </p>
                       </div>
                     </div>
                   </CardHeader>
@@ -728,11 +857,17 @@ export default function HackathonGrantsPlatform() {
                   <CardContent className="space-y-4">
                     <div className="flex justify-between items-center">
                       <div>
-                        <p className="text-lg font-bold text-green-400">${team.totalGrants}</p>
-                        <p className="text-xs text-gray-400">{team.grantCount} grants</p>
+                        <p className="text-lg font-bold text-green-400">
+                          ${team.totalGrants}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {team.grantCount} grants
+                        </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-orange-400">#{index + 1}</p>
+                        <p className="text-lg font-bold text-orange-400">
+                          #{index + 1}
+                        </p>
                         <p className="text-xs text-gray-400">Rank</p>
                       </div>
                     </div>
@@ -741,8 +876,8 @@ export default function HackathonGrantsPlatform() {
                       {userRole === "judge" ? (
                         <Button
                           onClick={() => {
-                            setSelectedTeam(team)
-                            setShowGrantModal(true)
+                            setSelectedTeam(team);
+                            setShowGrantModal(true);
                           }}
                           disabled={!isWalletConnected}
                           className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-black font-bold"
@@ -753,8 +888,8 @@ export default function HackathonGrantsPlatform() {
                       ) : (
                         <Button
                           onClick={() => {
-                            setSelectedTeam(team)
-                            setShowVoteModal(true)
+                            setSelectedTeam(team);
+                            setShowVoteModal(true);
                           }}
                           disabled={!isWalletConnected}
                           className="flex-1 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-black font-bold"
@@ -767,18 +902,20 @@ export default function HackathonGrantsPlatform() {
                       <Button
                         variant="outline"
                         onClick={() => {
-                          setSelectedTeam(team)
-                          setShowQRModal(true)
+                          setSelectedTeam(team);
+                          setShowQRModal(true);
                         }}
                         className="border-gray-600 text-gray-300 hover:bg-gray-800"
                       >
-                        <QrCode className="w-4 h-4" />
+                        <QrCode className="w-4 h-4 text-black" />
                       </Button>
 
                       {team.prototypeUrl && (
                         <Button
                           variant="outline"
-                          onClick={() => window.open(team.prototypeUrl, "_blank")}
+                          onClick={() =>
+                            window.open(team.prototypeUrl, "_blank")
+                          }
                           className="border-gray-600 text-gray-300 hover:bg-gray-800"
                         >
                           <ExternalLink className="w-4 h-4" />
@@ -795,8 +932,12 @@ export default function HackathonGrantsPlatform() {
                 <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Search className="w-12 h-12 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-medium text-white mb-2">No teams found</h3>
-                <p className="text-gray-400">Try adjusting your search or category filter</p>
+                <h3 className="text-lg font-medium text-white mb-2">
+                  No teams found
+                </h3>
+                <p className="text-gray-400">
+                  Try adjusting your search or category filter
+                </p>
               </div>
             )}
           </>
@@ -809,28 +950,30 @@ export default function HackathonGrantsPlatform() {
               <h2 className="text-4xl font-bold bg-gradient-to-r from-pink-400 to-orange-400 bg-clip-text text-transparent mb-4">
                 🏆 Live Leaderboard
               </h2>
-              <p className="text-xl text-gray-300">Real-time rankings based on votes and grants</p>
+              <p className="text-xl text-gray-300">
+                Real-time rankings based on votes and grants
+              </p>
             </div>
 
             <div className="space-y-4">
               {leaderboardTeams.map((team, index) => {
                 // Make sure we're calculating the score with proper type handling
-                const teamVotes = team.votes || 0
-                const teamGrants = team.totalGrants || 0
-                const score = teamVotes * 10 + teamGrants
+                const teamVotes = team.votes || 0;
+                const teamGrants = team.totalGrants || 0;
+                const score = teamVotes * 10 + teamGrants;
 
                 const getRankIcon = (rank: number) => {
                   switch (rank) {
                     case 0:
-                      return <Crown className="w-8 h-8 text-yellow-400" />
+                      return <Crown className="w-8 h-8 text-yellow-400" />;
                     case 1:
-                      return <Award className="w-8 h-8 text-gray-400" />
+                      return <Award className="w-8 h-8 text-gray-400" />;
                     case 2:
-                      return <Trophy className="w-8 h-8 text-amber-600" />
+                      return <Trophy className="w-8 h-8 text-amber-600" />;
                     default:
-                      return <Star className="w-8 h-8 text-blue-400" />
+                      return <Star className="w-8 h-8 text-blue-400" />;
                   }
-                }
+                };
 
                 return (
                   <Card
@@ -843,11 +986,16 @@ export default function HackathonGrantsPlatform() {
                       <div className="flex items-center space-x-6">
                         <div className="flex items-center space-x-3">
                           {getRankIcon(index)}
-                          <span className="text-2xl font-bold text-white">#{index + 1}</span>
+                          <span className="text-2xl font-bold text-white">
+                            #{index + 1}
+                          </span>
                         </div>
 
                         <Avatar className="w-16 h-16">
-                          <AvatarImage src={team.image || "/placeholder.svg"} alt={team.name} />
+                          <AvatarImage
+                            src={team.image || "/placeholder.svg"}
+                            alt={team.name}
+                          />
                           <AvatarFallback className="bg-gradient-to-r from-pink-500 to-orange-500 text-black text-lg font-bold">
                             {team.name
                               .split(" ")
@@ -857,23 +1005,35 @@ export default function HackathonGrantsPlatform() {
                         </Avatar>
 
                         <div className="flex-1">
-                          <h3 className="text-xl font-bold text-white">{team.name}</h3>
-                          <p className="text-pink-400 font-medium">{team.projectName}</p>
-                          <Badge className="mt-1 bg-gray-800 text-gray-300">{team.category}</Badge>
+                          <h3 className="text-xl font-bold text-white">
+                            {team.name}
+                          </h3>
+                          <p className="text-pink-400 font-medium">
+                            {team.projectName}
+                          </p>
+                          <Badge className="mt-1 bg-gray-800 text-gray-300">
+                            {team.category}
+                          </Badge>
                         </div>
 
                         <div className="text-right space-y-2">
                           <div className="flex items-center space-x-4">
                             <div className="text-center">
-                              <p className="text-2xl font-bold text-pink-400">{teamVotes}</p>
+                              <p className="text-2xl font-bold text-pink-400">
+                                {teamVotes}
+                              </p>
                               <p className="text-xs text-gray-400">Votes</p>
                             </div>
                             <div className="text-center">
-                              <p className="text-2xl font-bold text-green-400">${teamGrants}</p>
+                              <p className="text-2xl font-bold text-green-400">
+                                ${teamGrants}
+                              </p>
                               <p className="text-xs text-gray-400">Grants</p>
                             </div>
                             <div className="text-center">
-                              <p className="text-2xl font-bold text-orange-400">{score}</p>
+                              <p className="text-2xl font-bold text-orange-400">
+                                {score}
+                              </p>
                               <p className="text-xs text-gray-400">Score</p>
                             </div>
                           </div>
@@ -881,7 +1041,7 @@ export default function HackathonGrantsPlatform() {
                       </div>
                     </CardContent>
                   </Card>
-                )
+                );
               })}
             </div>
           </div>
@@ -894,13 +1054,17 @@ export default function HackathonGrantsPlatform() {
               <h2 className="text-4xl font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent mb-4">
                 💰 Judge Control Panel
               </h2>
-              <p className="text-xl text-gray-300 mb-6">Grant micro-funds to promising teams</p>
+              <p className="text-xl text-gray-300 mb-6">
+                Grant micro-funds to promising teams
+              </p>
 
               <Card className="bg-gray-900 border-gray-800 max-w-md mx-auto">
                 <CardContent className="p-6">
                   <div className="text-center">
                     <p className="text-gray-400 text-sm">Available Balance</p>
-                    <p className="text-4xl font-bold text-green-400">${judgeBalance}</p>
+                    <p className="text-4xl font-bold text-green-400">
+                      ${judgeBalance}
+                    </p>
                     <p className="text-gray-400 text-sm">Ready to grant</p>
                   </div>
                 </CardContent>
@@ -922,14 +1086,17 @@ export default function HackathonGrantsPlatform() {
                       key={team.id}
                       className="bg-gray-800 border-gray-700 hover:border-green-500/50 cursor-pointer transition-all duration-300"
                       onClick={() => {
-                        setSelectedTeam(team)
-                        setShowGrantModal(true)
+                        setSelectedTeam(team);
+                        setShowGrantModal(true);
                       }}
                     >
                       <CardContent className="p-4">
                         <div className="flex items-center space-x-3">
                           <Avatar className="w-12 h-12">
-                            <AvatarImage src={team.image || "/placeholder.svg"} alt={team.name} />
+                            <AvatarImage
+                              src={team.image || "/placeholder.svg"}
+                              alt={team.name}
+                            />
                             <AvatarFallback className="bg-green-500 text-black text-sm font-bold">
                               {team.name
                                 .split(" ")
@@ -938,9 +1105,15 @@ export default function HackathonGrantsPlatform() {
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1">
-                            <p className="text-white font-medium">{team.name}</p>
-                            <p className="text-gray-400 text-sm">{team.projectName}</p>
-                            <p className="text-green-400 text-sm">${team.totalGrants} granted</p>
+                            <p className="text-white font-medium">
+                              {team.name}
+                            </p>
+                            <p className="text-gray-400 text-sm">
+                              {team.projectName}
+                            </p>
+                            <p className="text-green-400 text-sm">
+                              ${team.totalGrants} granted
+                            </p>
                           </div>
                         </div>
                       </CardContent>
@@ -960,29 +1133,40 @@ export default function HackathonGrantsPlatform() {
               </CardHeader>
               <CardContent>
                 {grants.length === 0 ? (
-                  <p className="text-gray-400 text-center py-8">No grants sent yet</p>
+                  <p className="text-gray-400 text-center py-8">
+                    No grants sent yet
+                  </p>
                 ) : (
                   <div className="space-y-4">
                     {grants.slice(0, 10).map((grant) => {
-                      const team = teams.find((t) => t.id === grant.teamId)
+                      const team = teams.find((t) => t.id === grant.teamId);
                       return (
-                        <div key={grant.id} className="flex items-center justify-between p-4 bg-gray-800 rounded-lg">
+                        <div
+                          key={grant.id}
+                          className="flex items-center justify-between p-4 bg-gray-800 rounded-lg"
+                        >
                           <div className="flex items-center space-x-3">
                             <div
                               className={`w-3 h-3 rounded-full ${
                                 grant.status === "success"
                                   ? "bg-green-400"
                                   : grant.status === "pending"
-                                    ? "bg-yellow-400 animate-pulse"
-                                    : "bg-red-400"
+                                  ? "bg-yellow-400 animate-pulse"
+                                  : "bg-red-400"
                               }`}
                             ></div>
                             <div>
                               <p className="text-white font-medium">
                                 ${grant.amount} → {team?.name}
                               </p>
-                              <p className="text-gray-400 text-sm">{new Date(grant.timestamp).toLocaleString()}</p>
-                              {grant.message && <p className="text-gray-300 text-sm">"{grant.message}"</p>}
+                              <p className="text-gray-400 text-sm">
+                                {new Date(grant.timestamp).toLocaleString()}
+                              </p>
+                              {grant.message && (
+                                <p className="text-gray-300 text-sm">
+                                  "{grant.message}"
+                                </p>
+                              )}
                             </div>
                           </div>
                           <Badge
@@ -990,14 +1174,14 @@ export default function HackathonGrantsPlatform() {
                               grant.status === "success"
                                 ? "bg-green-500/20 text-green-400"
                                 : grant.status === "pending"
-                                  ? "bg-yellow-500/20 text-yellow-400"
-                                  : "bg-red-500/20 text-red-400"
+                                ? "bg-yellow-500/20 text-yellow-400"
+                                : "bg-red-500/20 text-red-400"
                             }`}
                           >
                             {grant.status}
                           </Badge>
                         </div>
-                      )
+                      );
                     })}
                   </div>
                 )}
@@ -1013,7 +1197,9 @@ export default function HackathonGrantsPlatform() {
               <h2 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent mb-4">
                 📊 Live Analytics
               </h2>
-              <p className="text-xl text-gray-300">Real-time hackathon insights</p>
+              <p className="text-xl text-gray-300">
+                Real-time hackathon insights
+              </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1021,7 +1207,9 @@ export default function HackathonGrantsPlatform() {
                 <CardContent className="p-6">
                   <div className="text-center">
                     <Flame className="w-8 h-8 text-orange-400 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-white">{teams.length}</p>
+                    <p className="text-2xl font-bold text-white">
+                      {teams.length}
+                    </p>
                     <p className="text-gray-400 text-sm">Registered Teams</p>
                   </div>
                 </CardContent>
@@ -1031,7 +1219,9 @@ export default function HackathonGrantsPlatform() {
                 <CardContent className="p-6">
                   <div className="text-center">
                     <Heart className="w-8 h-8 text-pink-400 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-white">{votes.length}</p>
+                    <p className="text-2xl font-bold text-white">
+                      {votes.length}
+                    </p>
                     <p className="text-gray-400 text-sm">Community Votes</p>
                   </div>
                 </CardContent>
@@ -1042,7 +1232,10 @@ export default function HackathonGrantsPlatform() {
                   <div className="text-center">
                     <DollarSign className="w-8 h-8 text-green-400 mx-auto mb-2" />
                     <p className="text-2xl font-bold text-white">
-                      ${grants.filter((g) => g.status === "success").reduce((sum, g) => sum + g.amount, 0)}
+                      $
+                      {grants
+                        .filter((g) => g.status === "success")
+                        .reduce((sum, g) => sum + g.amount, 0)}
                     </p>
                     <p className="text-gray-400 text-sm">Total Granted</p>
                   </div>
@@ -1053,7 +1246,9 @@ export default function HackathonGrantsPlatform() {
                 <CardContent className="p-6">
                   <div className="text-center">
                     <Target className="w-8 h-8 text-purple-400 mx-auto mb-2" />
-                    <p className="text-2xl font-bold text-white">{teams.filter((t) => t.prototypeUrl).length}</p>
+                    <p className="text-2xl font-bold text-white">
+                      {teams.filter((t) => t.prototypeUrl).length}
+                    </p>
                     <p className="text-gray-400 text-sm">Live Prototypes</p>
                   </div>
                 </CardContent>
@@ -1063,15 +1258,25 @@ export default function HackathonGrantsPlatform() {
             {/* Category Breakdown */}
             <Card className="bg-gray-900 border-gray-800">
               <CardHeader>
-                <CardTitle className="text-purple-400">Category Breakdown</CardTitle>
+                <CardTitle className="text-purple-400">
+                  Category Breakdown
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {categories.map((category) => {
-                    const categoryTeams = teams.filter((t) => t.category === category)
-                    const percentage = teams.length > 0 ? (categoryTeams.length / teams.length) * 100 : 0
+                    const categoryTeams = teams.filter(
+                      (t) => t.category === category
+                    );
+                    const percentage =
+                      teams.length > 0
+                        ? (categoryTeams.length / teams.length) * 100
+                        : 0;
                     return (
-                      <div key={category} className="flex items-center justify-between">
+                      <div
+                        key={category}
+                        className="flex items-center justify-between"
+                      >
                         <span className="text-gray-300">{category}</span>
                         <div className="flex items-center space-x-3">
                           <div className="w-32 bg-gray-700 rounded-full h-2">
@@ -1080,10 +1285,12 @@ export default function HackathonGrantsPlatform() {
                               style={{ width: `${percentage}%` }}
                             ></div>
                           </div>
-                          <span className="text-gray-400 text-sm w-12">{categoryTeams.length}</span>
+                          <span className="text-gray-400 text-sm w-12">
+                            {categoryTeams.length}
+                          </span>
                         </div>
                       </div>
-                    )
+                    );
                   })}
                 </div>
               </CardContent>
@@ -1096,43 +1303,67 @@ export default function HackathonGrantsPlatform() {
       <Dialog open={showRegisterModal} onOpenChange={setShowRegisterModal}>
         <DialogContent className="sm:max-w-2xl bg-gray-900 border-gray-700 text-white">
           <DialogHeader>
-            <DialogTitle className="text-pink-400 text-2xl">Register Your Team</DialogTitle>
+            <DialogTitle className="text-pink-400 text-2xl">
+              Register Your Team
+            </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">Team Name *</label>
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  Team Name *
+                </label>
                 <Input
                   placeholder="Awesome Team"
                   value={registerForm.teamName}
-                  onChange={(e) => setRegisterForm({ ...registerForm, teamName: e.target.value })}
+                  onChange={(e) =>
+                    setRegisterForm({
+                      ...registerForm,
+                      teamName: e.target.value,
+                    })
+                  }
                   className="bg-gray-800 border-gray-600 text-white"
                 />
               </div>
               <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">Project Name *</label>
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  Project Name *
+                </label>
                 <Input
                   placeholder="Revolutionary App"
                   value={registerForm.projectName}
-                  onChange={(e) => setRegisterForm({ ...registerForm, projectName: e.target.value })}
+                  onChange={(e) =>
+                    setRegisterForm({
+                      ...registerForm,
+                      projectName: e.target.value,
+                    })
+                  }
                   className="bg-gray-800 border-gray-600 text-white"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">Category *</label>
+              <label className="block text-gray-300 text-sm font-medium mb-2">
+                Category *
+              </label>
               <Select
                 value={registerForm.category}
-                onValueChange={(value) => setRegisterForm({ ...registerForm, category: value })}
+                onValueChange={(value) =>
+                  setRegisterForm({ ...registerForm, category: value })
+                }
               >
                 <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent className="bg-gray-800 border-gray-600">
                   {categories.map((category) => (
-                    <SelectItem key={category} value={category} className="text-white">
+                    <SelectItem
+                      key={category}
+                      value={category}
+                      className="text-white"
+                    >
                       {category}
                     </SelectItem>
                   ))}
@@ -1141,42 +1372,70 @@ export default function HackathonGrantsPlatform() {
             </div>
 
             <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">Project Description *</label>
+              <label className="block text-gray-300 text-sm font-medium mb-2">
+                Project Description *
+              </label>
               <Textarea
                 placeholder="Describe your amazing project..."
                 value={registerForm.description}
-                onChange={(e) => setRegisterForm({ ...registerForm, description: e.target.value })}
+                onChange={(e) =>
+                  setRegisterForm({
+                    ...registerForm,
+                    description: e.target.value,
+                  })
+                }
                 className="bg-gray-800 border-gray-600 text-white"
                 rows={3}
               />
             </div>
 
             <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">Wallet Address *</label>
+              <label className="block text-gray-300 text-sm font-medium mb-2">
+                Wallet Address *
+              </label>
               <Input
                 placeholder="0x..."
                 value={registerForm.walletAddress}
-                onChange={(e) => setRegisterForm({ ...registerForm, walletAddress: e.target.value })}
+                onChange={(e) =>
+                  setRegisterForm({
+                    ...registerForm,
+                    walletAddress: e.target.value,
+                  })
+                }
                 className="bg-gray-800 border-gray-600 text-white font-mono"
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">Prototype URL</label>
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  Prototype URL
+                </label>
                 <Input
                   placeholder="https://your-prototype.com"
                   value={registerForm.prototypeUrl}
-                  onChange={(e) => setRegisterForm({ ...registerForm, prototypeUrl: e.target.value })}
+                  onChange={(e) =>
+                    setRegisterForm({
+                      ...registerForm,
+                      prototypeUrl: e.target.value,
+                    })
+                  }
                   className="bg-gray-800 border-gray-600 text-white"
                 />
               </div>
               <div>
-                <label className="block text-gray-300 text-sm font-medium mb-2">Slides URL</label>
+                <label className="block text-gray-300 text-sm font-medium mb-2">
+                  Slides URL
+                </label>
                 <Input
                   placeholder="https://your-slides.com"
                   value={registerForm.slidesUrl}
-                  onChange={(e) => setRegisterForm({ ...registerForm, slidesUrl: e.target.value })}
+                  onChange={(e) =>
+                    setRegisterForm({
+                      ...registerForm,
+                      slidesUrl: e.target.value,
+                    })
+                  }
                   className="bg-gray-800 border-gray-600 text-white"
                 />
               </div>
@@ -1184,7 +1443,11 @@ export default function HackathonGrantsPlatform() {
 
             <Button
               onClick={registerTeam}
-              disabled={!registerForm.teamName || !registerForm.projectName || !registerForm.walletAddress}
+              disabled={
+                !registerForm.teamName ||
+                !registerForm.projectName ||
+                !registerForm.walletAddress
+              }
               className="w-full bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 text-black font-bold py-4"
             >
               <Plus className="w-5 h-5 mr-2" />
@@ -1200,7 +1463,10 @@ export default function HackathonGrantsPlatform() {
           <DialogHeader>
             <DialogTitle className="flex items-center space-x-3 text-green-400">
               <Avatar className="w-10 h-10">
-                <AvatarImage src={selectedTeam?.image || "/placeholder.svg"} alt={selectedTeam?.name} />
+                <AvatarImage
+                  src={selectedTeam?.image || "/placeholder.svg"}
+                  alt={selectedTeam?.name}
+                />
                 <AvatarFallback className="bg-green-500 text-black">
                   {selectedTeam?.name.split(" ").map((n) => n[0])}
                 </AvatarFallback>
@@ -1218,8 +1484,12 @@ export default function HackathonGrantsPlatform() {
                       <DollarSign className="w-8 h-8 text-green-400 animate-pulse" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-medium text-white">Processing Grant...</h3>
-                      <p className="text-gray-400">Sending ${currentGrant.amount} to the team</p>
+                      <h3 className="text-lg font-medium text-white">
+                        Processing Grant...
+                      </h3>
+                      <p className="text-gray-400">
+                        Sending ${currentGrant.amount} to the team
+                      </p>
                     </div>
                   </div>
                 )}
@@ -1230,9 +1500,12 @@ export default function HackathonGrantsPlatform() {
                       <CheckCircle className="w-8 h-8 text-green-400" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-medium text-white">Grant Sent Successfully! 🎉</h3>
+                      <h3 className="text-lg font-medium text-white">
+                        Grant Sent Successfully! 🎉
+                      </h3>
                       <p className="text-gray-400">
-                        ${currentGrant.amount} has been granted to {selectedTeam?.name}
+                        ${currentGrant.amount} has been granted to{" "}
+                        {selectedTeam?.name}
                       </p>
                     </div>
                   </div>
@@ -1244,8 +1517,12 @@ export default function HackathonGrantsPlatform() {
                       <XCircle className="w-8 h-8 text-red-400" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-medium text-white">Grant Failed</h3>
-                      <p className="text-gray-400">Please try again or check your connection</p>
+                      <h3 className="text-lg font-medium text-white">
+                        Grant Failed
+                      </h3>
+                      <p className="text-gray-400">
+                        Please try again or check your connection
+                      </p>
                     </div>
                     <Button
                       onClick={() => setCurrentGrant(null)}
@@ -1259,7 +1536,9 @@ export default function HackathonGrantsPlatform() {
             ) : (
               <>
                 <div>
-                  <label className="block text-gray-300 text-sm font-medium mb-2">Grant Amount (USD)</label>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    Grant Amount (USD)
+                  </label>
                   <Input
                     type="number"
                     placeholder="0.00"
@@ -1270,7 +1549,9 @@ export default function HackathonGrantsPlatform() {
                 </div>
 
                 <div>
-                  <label className="block text-gray-300 text-sm font-medium mb-2">Message (Optional)</label>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">
+                    Message (Optional)
+                  </label>
                   <Textarea
                     placeholder="Great work! Keep it up..."
                     value={grantMessage}
@@ -1284,7 +1565,8 @@ export default function HackathonGrantsPlatform() {
                   <div className="flex justify-between items-center text-sm mb-2">
                     <span className="text-gray-400">To:</span>
                     <span className="font-mono text-green-400">
-                      {selectedTeam?.walletAddress.slice(0, 8)}...{selectedTeam?.walletAddress.slice(-6)}
+                      {selectedTeam?.walletAddress.slice(0, 8)}...
+                      {selectedTeam?.walletAddress.slice(-6)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-sm">
@@ -1299,7 +1581,7 @@ export default function HackathonGrantsPlatform() {
                       key={amount}
                       onClick={() => setGrantAmount(amount.toString())}
                       variant="outline"
-                      className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                      className="border-gray-600 text-black hover:text-white hover:bg-gray-800"
                     >
                       ${amount}
                     </Button>
@@ -1307,7 +1589,9 @@ export default function HackathonGrantsPlatform() {
                 </div>
 
                 <Button
-                  onClick={() => sendGrant(Number.parseFloat(grantAmount), grantMessage)}
+                  onClick={() =>
+                    sendGrant(Number.parseFloat(grantAmount), grantMessage)
+                  }
                   disabled={
                     !grantAmount ||
                     !isWalletConnected ||
@@ -1330,24 +1614,33 @@ export default function HackathonGrantsPlatform() {
       <Dialog open={showVoteModal} onOpenChange={setShowVoteModal}>
         <DialogContent className="sm:max-w-md bg-gray-900 border-gray-700 text-white">
           <DialogHeader>
-            <DialogTitle className="text-center text-pink-400">Vote for {selectedTeam?.name}</DialogTitle>
+            <DialogTitle className="text-center text-pink-400">
+              Vote for {selectedTeam?.name}
+            </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-6 text-center">
             <Avatar className="w-24 h-24 mx-auto">
-              <AvatarImage src={selectedTeam?.image || "/placeholder.svg"} alt={selectedTeam?.name} />
+              <AvatarImage
+                src={selectedTeam?.image || "/placeholder.svg"}
+                alt={selectedTeam?.name}
+              />
               <AvatarFallback className="bg-gradient-to-r from-pink-500 to-orange-500 text-black text-2xl font-bold">
                 {selectedTeam?.name.split(" ").map((n) => n[0])}
               </AvatarFallback>
             </Avatar>
 
             <div>
-              <h3 className="text-xl font-bold text-white">{selectedTeam?.projectName}</h3>
+              <h3 className="text-xl font-bold text-white">
+                {selectedTeam?.projectName}
+              </h3>
               <p className="text-gray-400 mt-2">{selectedTeam?.description}</p>
             </div>
 
             <div className="bg-gray-800 rounded-lg p-4">
-              <p className="text-gray-300 text-sm">Click to vote for this team! You can vote multiple times.</p>
+              <p className="text-gray-300 text-sm">
+                Click to vote for this team! You can vote multiple times.
+              </p>
             </div>
 
             <Button
@@ -1365,12 +1658,16 @@ export default function HackathonGrantsPlatform() {
       <Dialog open={showQRModal} onOpenChange={setShowQRModal}>
         <DialogContent className="sm:max-w-md bg-gray-900 border-gray-700 text-white">
           <DialogHeader>
-            <DialogTitle className="text-center text-orange-400">Project QR Code</DialogTitle>
+            <DialogTitle className="text-center text-orange-400">
+              Project QR Code
+            </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="text-center">
-              <h3 className="text-lg font-bold text-white">{selectedTeam?.projectName}</h3>
+              <h3 className="text-lg font-bold text-white">
+                {selectedTeam?.projectName}
+              </h3>
               <p className="text-gray-400">{selectedTeam?.name}</p>
             </div>
 
@@ -1387,11 +1684,17 @@ export default function HackathonGrantsPlatform() {
             </div>
 
             <div className="text-center space-y-2">
-              <p className="text-gray-400 text-sm">Scan to view the project prototype</p>
+              <p className="text-gray-400 text-sm">
+                Scan to view the project prototype
+              </p>
               <div className="flex space-x-2">
                 <Button
                   variant="outline"
-                  onClick={() => navigator.clipboard.writeText(selectedTeam ? getQRCodeURL(selectedTeam) : "")}
+                  onClick={() =>
+                    navigator.clipboard.writeText(
+                      selectedTeam ? getQRCodeURL(selectedTeam) : ""
+                    )
+                  }
                   className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
                 >
                   <Copy className="w-4 h-4 mr-2" />
@@ -1400,7 +1703,9 @@ export default function HackathonGrantsPlatform() {
                 {selectedTeam?.prototypeUrl && (
                   <Button
                     variant="outline"
-                    onClick={() => window.open(selectedTeam.prototypeUrl, "_blank")}
+                    onClick={() =>
+                      window.open(selectedTeam.prototypeUrl, "_blank")
+                    }
                     className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
@@ -1413,5 +1718,5 @@ export default function HackathonGrantsPlatform() {
         </DialogContent>
       </Dialog>
     </div>
-  )
+  );
 }
