@@ -34,6 +34,7 @@ import {
   Flame,
 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
+import { ConnectButton } from "@mysten/dapp-kit"
 
 // Types
 interface Team {
@@ -172,22 +173,7 @@ export default function HackathonGrantsPlatform() {
   })
 
   // Connect Wallet
-  const connectWallet = async () => {
-    // Simulate wallet connection
-    setTimeout(() => {
-      const mockAddress = "0xa1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0"
-      setIsWalletConnected(true)
-      setWalletAddress(mockAddress)
-      localStorage.setItem("hackathon-wallet", mockAddress)
-    }, 1000)
-  }
-
-  const disconnectWallet = () => {
-    setIsWalletConnected(false)
-    setWalletAddress("")
-    localStorage.removeItem("hackathon-wallet")
-  }
-
+  
   // Register Team
   const registerTeam = () => {
     if (!registerForm.teamName || !registerForm.projectName || !registerForm.walletAddress) return
@@ -355,34 +341,8 @@ export default function HackathonGrantsPlatform() {
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
-
-              {isWalletConnected ? (
-                <div className="flex items-center space-x-3">
-                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                    <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
-                    {userRole === "judge" ? "Judge" : "Audience"}
-                  </Badge>
-                  <span className="text-sm text-gray-400 font-mono">
-                    {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={disconnectWallet}
-                    className="border-gray-600 text-gray-300 hover:bg-gray-800"
-                  >
-                    Disconnect
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  onClick={connectWallet}
-                  className="bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 text-black font-bold"
-                >
-                  <Wallet className="w-4 h-4 mr-2" />
-                  Connect Wallet
-                </Button>
-              )}
+              
+              <ConnectButton className="bg-gradient-to-r from-pink-500 to-orange-500 hover:from-pink-600 hover:to-orange-600 text-black font-bold px-6 py-2 rounded-full shadow" />
             </div>
           </div>
         </div>
@@ -1091,7 +1051,7 @@ export default function HackathonGrantsPlatform() {
             ) : (
               <>
                 <div>
-                  <label className="block text-gray-300 text-sm font-medium mb-2">Grant Amount (USD)</label>
+                  <label className="block text-gray-300 text-sm font-medium mb-2">Grant Amount (SUI)</label>
                   <Input
                     type="number"
                     placeholder="0.00"
@@ -1119,10 +1079,7 @@ export default function HackathonGrantsPlatform() {
                       {selectedTeam?.walletAddress.slice(0, 8)}...{selectedTeam?.walletAddress.slice(-6)}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-400">Network Fee:</span>
-                    <span className="text-green-400">~$0.01</span>
-                  </div>
+
                 </div>
 
                 <div className="grid grid-cols-4 gap-2">
@@ -1131,7 +1088,7 @@ export default function HackathonGrantsPlatform() {
                       key={amount}
                       onClick={() => setGrantAmount(amount.toString())}
                       variant="outline"
-                      className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                      className="border-gray-600 text-gray-300 bg-gray-900 hover:bg-green-500 hover:text-black transition-colors duration-200"
                     >
                       ${amount}
                     </Button>
