@@ -34,7 +34,7 @@ import {
   Flame,
 } from "lucide-react"
 import { QRCodeSVG } from "qrcode.react"
-import { ConnectButton } from "@mysten/dapp-kit"
+import { ConnectButton, useCurrentAccount, useCurrentWallet, useSuiClientQuery } from "@mysten/dapp-kit"
 
 // Types
 interface Team {
@@ -95,11 +95,10 @@ export default function HackathonGrantsPlatform() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
-  const [isWalletConnected, setIsWalletConnected] = useState(false)
+  /* const [isWalletConnected, setIsWalletConnected] = useState(false) */
   const [walletAddress, setWalletAddress] = useState("")
   const [userRole, setUserRole] = useState<"judge" | "audience">("audience")
   const [hasVoted, setHasVoted] = useState(false)
-  const [judgeBalance, setJudgeBalance] = useState(1000)
 
   // Modal States
   const [showGrantModal, setShowGrantModal] = useState(false)
@@ -111,6 +110,36 @@ export default function HackathonGrantsPlatform() {
   const [grantAmount, setGrantAmount] = useState("")
   const [grantMessage, setGrantMessage] = useState("")
   const [currentGrant, setCurrentGrant] = useState<Grant | null>(null)
+
+  //Slush wallet connect 
+  const account = useCurrentAccount();
+
+  const isWalletConnected = !!account;
+
+  //SUIGraphQl balance connection
+  const { data, isLoading, error } = useSuiClientQuery(
+    "getBalance",
+    {
+      owner: account?.address ?? "",
+      coinType: "0x2::sui::SUI", // SUI coin type
+    },
+    {
+      enabled: !!account?.address,
+    }
+  );
+
+  function walletBalance(p0?: (prev: any) => number){
+
+  if (!account) return <div>Connect your wallet</div>;
+  if (isLoading) return <div>Loading balance...</div>;
+  if (error) return <div>Error loading balance</div>;
+
+  return (
+    <>
+      SUI Balance: {data?.totalBalance ?? 0}
+    </>
+  );
+  }
 
   // Registration Form
   const [registerForm, setRegisterForm] = useState({
@@ -137,7 +166,7 @@ export default function HackathonGrantsPlatform() {
     if (savedVotes) setVotes(JSON.parse(savedVotes))
     if (savedWallet) {
       setWalletAddress(savedWallet)
-      setIsWalletConnected(true)
+
     }
     if (savedRole) setUserRole(savedRole as "judge" | "audience")
     if (savedHasVoted) setHasVoted(JSON.parse(savedHasVoted))
@@ -237,7 +266,7 @@ export default function HackathonGrantsPlatform() {
       setGrants((prev) => prev.map((g) => (g.id === grant.id ? updatedGrant : g)))
 
       if (success) {
-        setJudgeBalance((prev) => prev - amount)
+        walletBalance((prev) => prev - amount)
         setTeams((prev) =>
           prev.map((team) =>
             team.id === selectedTeam.id
@@ -689,7 +718,7 @@ export default function HackathonGrantsPlatform() {
                 <CardContent className="p-6">
                   <div className="text-center">
                     <p className="text-gray-400 text-sm">Available Balance</p>
-                    <p className="text-4xl font-bold text-green-400">${judgeBalance}</p>
+                    <p className="text-4xl font-bold text-green-400">${walletBalance()}</p>
                     <p className="text-gray-400 text-sm">Ready to grant</p>
                   </div>
                 </CardContent>
@@ -1097,7 +1126,7 @@ export default function HackathonGrantsPlatform() {
 
                 <Button
                   onClick={() => sendGrant(Number.parseFloat(grantAmount), grantMessage)}
-                  disabled={!grantAmount || !isWalletConnected || judgeBalance < Number.parseFloat(grantAmount)}
+                  disabled={!grantAmount || !isWalletConnected}
                   className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-black font-bold py-4"
                 >
                   <DollarSign className="w-5 h-5 mr-2" />
