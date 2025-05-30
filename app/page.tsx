@@ -268,15 +268,6 @@ export default function HackathonGrantsPlatform() {
       unsubscribeVotes()
     }
   }, [])
-    const savedTeams = localStorage.getItem("hackathon-teams")
-    const savedGrants = localStorage.getItem("hackathon-grants")
-    const savedVotes = localStorage.getItem("hackathon-votes")
-    const savedWallet = localStorage.getItem("hackathon-wallet")
-    const savedRole = localStorage.getItem("hackathon-role")
-    const savedHasVoted = localStorage.getItem("hackathon-has-voted")
-
-    if (savedTeams) setTeams(JSON.parse(savedTeams))
-    if (savedGrants) setGrants(JSON.parse(savedGrants))
   // Sorted teams for leaderboard
   const leaderboardTeams = [...teams].sort((a, b) => {
     const aVotes = a.votes || 0
