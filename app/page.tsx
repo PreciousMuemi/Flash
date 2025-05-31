@@ -1,5 +1,7 @@
 "use client"
 
+import { DepositModal } from "swypt-checkout";
+import "swypt-checkout/dist/styles.css";
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -119,6 +121,8 @@ export default function HackathonGrantsPlatform() {
   const [judgeBalance, setJudgeBalance] = useState(1000)
   const [isLoading, setIsLoading] = useState(true)
 
+
+  const [isOpen, setIsOpen] = useState(false);
   // Modal States
   const [showGrantModal, setShowGrantModal] = useState(false)
   const [showQRModal, setShowQRModal] = useState(false)
@@ -140,6 +144,8 @@ export default function HackathonGrantsPlatform() {
     prototypeUrl: "",
     slidesUrl: "",
   })
+
+  const [depositTeam, setDepositTeam] = useState<Team | null>(null)
 
   // Initialize Analytics only on client side
   useEffect(() => {
@@ -739,17 +745,20 @@ export default function HackathonGrantsPlatform() {
 
                     <div className="flex space-x-2">
                       {userRole === "judge" ? (
-                        <Button
-                          onClick={() => {
-                            setSelectedTeam(team)
-                            setShowGrantModal(true)
-                          }}
-                          disabled={!isWalletConnected}
-                          className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-black font-bold"
-                        >
-                          <DollarSign className="w-4 h-4 mr-2" />
-                          Grant
-                        </Button>
+                        <>
+                          <Button onClick={() => setIsOpen(true)}>
+                            Open Deposit Modal
+                          </Button>
+                          <DepositModal
+                            isOpen={isOpen}
+                            onClose={() => setIsOpen(false)}
+                            headerBackgroundColor="linear-gradient(to right, #DD268A, #FF4040)"
+                            businessName="Your Business"
+                            merchantName="Your Merchant"
+                            merchantAddress="0x6d19a24D93379D1bA58d28884fFBBEf1bc145387"
+                            amount={100}
+                          />
+                        </>
                       ) : (
                         <Button
                           onClick={() => {
@@ -1337,7 +1346,7 @@ export default function HackathonGrantsPlatform() {
             <Avatar className="w-24 h-24 mx-auto">
               <AvatarImage src={selectedTeam?.image || "/placeholder.svg"} alt={selectedTeam?.name} />
               <AvatarFallback className="bg-gradient-to-r from-pink-500 to-orange-500 text-black text-2xl font-bold">
-                {selectedTeam?.name.split(" ").map((n) => n[0])}
+                {selectedTeam?.name.split(" ").map((n) => n[0]).join("")}
               </AvatarFallback>
             </Avatar>
 
@@ -1412,6 +1421,18 @@ export default function HackathonGrantsPlatform() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {depositTeam && (
+        <DepositModal
+          isOpen={!!depositTeam}
+          onClose={() => setDepositTeam(null)}
+          headerBackgroundColor="linear-gradient(to right, #DD268A, #FF4040)"
+          businessName="Your Business"
+          merchantName="Your Merchant"
+          merchantAddress={depositTeam.walletAddress}
+          amount={100}
+        />
+      )}
     </div>
   )
 }
