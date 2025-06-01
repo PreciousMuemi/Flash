@@ -31,7 +31,13 @@ export async function fetchTeams(): Promise<Team[]> {
 }
 
 // Fetch grants from Firebase
+// Fetch grants from Firebase
 export async function fetchGrants(): Promise<Grant[]> {
   try {
     const grantsSnapshot = await getDocs(collection(db, "grants"))
-    return grantsSnapshot.docs.map(doc => ({ id:\
+    return grantsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Grant)
+  } catch (error) {
+    console.error("Error fetching grants:", error)
+    return []
+  }
+}

@@ -1,6 +1,8 @@
 "use client"
 
-import { useState, useEffect, SetStateAction } from "react"
+import { DepositModal } from "swypt-checkout";
+import "swypt-checkout/dist/styles.css";
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -113,11 +115,11 @@ export default function HackathonGrantsPlatform() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null)
-  /* const [isWalletConnected, setIsWalletConnected] = useState(false) */
   const [walletAddress, setWalletAddress] = useState("")
   const [userRole, setUserRole] = useState<"judge" | "audience">("audience")
   const [hasVoted, setHasVoted] = useState(false)
   const [issLoading, setIssLoading] = useState(true)
+  const [depositTeam, setDepositTeam] = useState<Team | null>(null)
 
   // Modal States
   const [showGrantModal, setShowGrantModal] = useState(false)
@@ -132,7 +134,6 @@ export default function HackathonGrantsPlatform() {
 
   //Slush wallet connect 
   const account = useCurrentAccount();
-
   const isWalletConnected = !!account;
 
   //SUIGraphQl balance connection
@@ -148,16 +149,15 @@ export default function HackathonGrantsPlatform() {
   );
 
   function walletBalance(p0?: (prev: any) => number){
+    if (!account) return <div>Connect your wallet</div>;
+    if (isLoading) return <div>Loading balance...</div>;
+    if (error) return <div>Error loading balance</div>;
 
-  if (!account) return <div>Connect your wallet</div>;
-  if (isLoading) return <div>Loading balance...</div>;
-  if (error) return <div>Error loading balance</div>;
-
-  return (
-    <>
-      SUI Balance: {data?.totalBalance ?? 0}
-    </>
-  );
+    return (
+      <>
+        SUI Balance: {data?.totalBalance ?? 0}
+      </>
+    );
   }
 
   // Registration Form
@@ -217,7 +217,6 @@ export default function HackathonGrantsPlatform() {
         const savedWallet = localStorage.getItem("hackathon-wallet")
         if (savedWallet) {
           setWalletAddress(savedWallet)
-          
         }
 
         const savedRole = localStorage.getItem("hackathon-role")
@@ -268,6 +267,7 @@ export default function HackathonGrantsPlatform() {
       unsubscribeVotes()
     }
   }, [])
+
   // Sorted teams for leaderboard
   const leaderboardTeams = [...teams].sort((a, b) => {
     const aVotes = a.votes || 0
@@ -279,9 +279,6 @@ export default function HackathonGrantsPlatform() {
     const bScore = bVotes * 10 + bGrants
     return bScore - aScore
   });
-
-  // Connect Wallet
-  
 
   // Register Team
   const registerTeam = async () => {
@@ -553,7 +550,6 @@ export default function HackathonGrantsPlatform() {
                 </TabsList>
               </Tabs>
               <ConnectButton />
-
             </div>
           </div>
         </div>
@@ -707,100 +703,92 @@ export default function HackathonGrantsPlatform() {
                   return matchesCategory && matchesSearch;
                 })
                 .map((team: Team, index: number) => (
-                <Card
-                  key={team.id}
-                  className="bg-gray-900 border-gray-800 hover:border-pink-500/50 transition-all duration-300 transform hover:scale-105"
-                >
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <Badge className="bg-pink-500/20 text-pink-400 border-pink-500/30">{team.category}</Badge>
-                      <div className="flex items-center space-x-2">
-                        <Heart className="w-4 h-4 text-red-400" />
-                        <span className="text-sm text-gray-400">{team.votes}</span>
+                  <Card
+                    key={team.id}
+                    className="bg-gray-900 border-gray-800 hover:border-pink-500/50 transition-all duration-300 transform hover:scale-105"
+                  >
+                    <CardHeader className="pb-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <Badge className="bg-pink-500/20 text-pink-400 border-pink-500/30">{team.category}</Badge>
+                        <div className="flex items-center space-x-2">
+                          <Heart className="w-4 h-4 text-red-400" />
+                          <span className="text-sm text-gray-400">{team.votes}</span>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center space-x-4">
-                      <Avatar className="w-16 h-16 ring-2 ring-pink-500/30">
-                        <AvatarImage src={team.image || "/placeholder.svg"} alt={team.name} />
-                        <AvatarFallback className="bg-gradient-to-r from-pink-500 to-orange-500 text-black text-lg font-bold">
-                          {team.name
-                            .split(" ")
-                            .map((n: string) => n[0])
-                            .join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <CardTitle className="text-lg text-white">{team.name}</CardTitle>
-                        <p className="text-sm text-pink-400 font-medium">{team.projectName}</p>
-                        <p className="text-xs text-gray-400 mt-1">{team.description.slice(0, 80)}...</p>
+                      <div className="flex items-center space-x-4">
+                        <Avatar className="w-16 h-16 ring-2 ring-pink-500/30">
+                          <AvatarImage src={team.image || "/placeholder.svg"} alt={team.name} />
+                          <AvatarFallback className="bg-gradient-to-r from-pink-500 to-orange-500 text-black text-lg font-bold">
+                            {team.name
+                              .split(" ")
+                              .map((n: string) => n[0])
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                          <CardTitle className="text-lg text-white">{team.name}</CardTitle>
+                          <p className="text-sm text-pink-400 font-medium">{team.projectName}</p>
+                          <p className="text-xs text-gray-400 mt-1">{team.description.slice(0, 80)}...</p>
+                        </div>
                       </div>
-                    </div>
-                  </CardHeader>
+                    </CardHeader>
 
-                  <CardContent className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className="text-lg font-bold text-green-400">${team.totalGrants}</p>
-                        <p className="text-xs text-gray-400">{team.grantCount} grants</p>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-lg font-bold text-green-400">${team.totalGrants}</p>
+                          <p className="text-xs text-gray-400">{team.grantCount} grants</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-orange-400">#{index + 1}</p>
+                          <p className="text-xs text-gray-400">Rank</p>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-lg font-bold text-orange-400">#{index + 1}</p>
-                        <p className="text-xs text-gray-400">Rank</p>
-                      </div>
-                    </div>
 
-                    <div className="flex space-x-2">
-                      {userRole === "judge" ? (
-                        <Button
-                          onClick={() => {
-                            setSelectedTeam(team)
-                            setShowGrantModal(true)
-                          }}
-                          disabled={!isWalletConnected}
-                          className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-black font-bold"
-                        >
-                          <DollarSign className="w-4 h-4 mr-2" />
-                          Grant
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={() => {
-                            setSelectedTeam(team)
-                            setShowVoteModal(true)
-                          }}
-                          disabled={!isWalletConnected}
-                          className="flex-1 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-black font-bold"
-                        >
-                          <Heart className="w-4 h-4 mr-2" />
-                          Vote
-                        </Button>
-                      )}
+                      <div className="flex space-x-2">
+                        {userRole === "judge" ? (
+                          <Button onClick={() => setDepositTeam(team)}>
+                            Open Deposit Modal
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={() => {
+                              setSelectedTeam(team)
+                              setShowVoteModal(true)
+                            }}
+                            disabled={!isWalletConnected}
+                            className="flex-1 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-black font-bold"
+                          >
+                            <Heart className="w-4 h-4 mr-2" />
+                            Vote
+                          </Button>
+                        )}
 
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setSelectedTeam(team)
-                          setShowQRModal(true)
-                        }}
-                        className="border-gray-600 text-gray-300 hover:bg-gray-800"
-                      >
-                        <QrCode className="w-4 h-4" />
-                      </Button>
-
-                      {team.prototypeUrl && (
                         <Button
                           variant="outline"
-                          onClick={() => window.open(team.prototypeUrl, "_blank")}
+                          onClick={() => {
+                            setSelectedTeam(team)
+                            setShowQRModal(true)
+                          }}
                           className="border-gray-600 text-gray-300 hover:bg-gray-800"
                         >
-                          <ExternalLink className="w-4 h-4" />
+                          <QrCode className="w-4 h-4" />
                         </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+
+                        {team.prototypeUrl && (
+                          <Button
+                            variant="outline"
+                            onClick={() => window.open(team.prototypeUrl, "_blank")}
+                            className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
             </div>
 
             {teams.filter((team) => {
@@ -1432,8 +1420,19 @@ export default function HackathonGrantsPlatform() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Single Deposit Modal */}
+      {depositTeam && (
+        <DepositModal
+          isOpen={!!depositTeam}
+          onClose={() => setDepositTeam(null)}
+          headerBackgroundColor="linear-gradient(to right, #DD268A, #FF4040)"
+          businessName="Your Business"
+          merchantName="Your Merchant"
+          merchantAddress={depositTeam.walletAddress}
+          amount={100}
+        />
+      )}
     </div>
   )
 }
-
-// Declare module for lucide-react icons
