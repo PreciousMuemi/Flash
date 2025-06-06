@@ -137,6 +137,7 @@ export default function HackathonGrantsPlatform() {
   // const [amount, setAmount] = useState(0);
 
   const [amounts, setAmounts] = useState<{[teamID: string]: string }>({});
+  const [isOpen, setIsOpen] = useState(false);
   
 
   console.log(teams);
@@ -1428,6 +1429,7 @@ export default function HackathonGrantsPlatform() {
       {depositTeam && (
         <DepositModal
           isOpen={!!depositTeam}
+          //  isOpen={isOpen}
           onClose={() => setDepositTeam(null)}
           headerBackgroundColor="linear-gradient(to right, #DD268A, #FF4040)"
           businessName="Your Business"
