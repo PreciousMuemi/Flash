@@ -132,33 +132,14 @@ export default function HackathonGrantsPlatform() {
   const [grantMessage, setGrantMessage] = useState("")
   const [currentGrant, setCurrentGrant] = useState<Grant | null>(null)
 
-  //Slush wallet connect 
-  const account = useCurrentAccount();
-  const isWalletConnected = !!account;
+  // steve
 
-  //SUIGraphQl balance connection
-  const { data, isLoading, error } = useSuiClientQuery(
-    "getBalance",
-    {
-      owner: account?.address ?? "",
-      coinType: "0x2::sui::SUI", // SUI coin type
-    },
-    {
-      enabled: !!account?.address,
-    }
-  );
+  // const [amount, setAmount] = useState(0);
 
-  function walletBalance(p0?: (prev: any) => number){
-    if (!account) return <div>Connect your wallet</div>;
-    if (isLoading) return <div>Loading balance...</div>;
-    if (error) return <div>Error loading balance</div>;
+  const [amounts, setAmounts] = useState<{[teamID: string]: string }>({});
+  
 
-    return (
-      <>
-        SUI Balance: {data?.totalBalance ?? 0}
-      </>
-    );
-  }
+  console.log(teams);
 
   // Registration Form
   const [registerForm, setRegisterForm] = useState({
@@ -320,17 +301,17 @@ export default function HackathonGrantsPlatform() {
 
   // Send Grant - With actual wallet transfer
   const sendGrant = async (amount: number, message = "") => {
-    if (!selectedTeam || !isWalletConnected || userRole !== "judge") {
-      console.log("Grant failed: Missing requirements", { selectedTeam, isWalletConnected, userRole })
-      return
-    }
-
+   
     if (amount <= 0 || isNaN(amount)) {
       console.log("Grant failed: Invalid amount", amount)
       return
     }
 
     try {
+      if (!selectedTeam) {
+        console.error("No team selected for grant process.");
+        return;
+      }
       console.log("Starting grant process...", { amount, teamId: selectedTeam.id })
 
       const grant = {
@@ -357,6 +338,10 @@ export default function HackathonGrantsPlatform() {
 
           // Here you would integrate with actual wallet/payment system
           // For demo purposes, we'll simulate the transfer
+          if (!selectedTeam) {
+            console.error("No team selected for grant transfer.")
+            return
+          }
           const transferResult = await simulateWalletTransfer(walletAddress, selectedTeam.walletAddress, amount)
           console.log("Transfer result:", transferResult)
 
@@ -376,17 +361,23 @@ export default function HackathonGrantsPlatform() {
           setCurrentGrant(updatedGrant as Grant)
 
           if (success) {
-            walletBalance((prev: number) => prev - amount)
+            
 
             // Update team stats in Firebase
-            const teamRef = doc(db, "teams", selectedTeam.id)
-            await updateDoc(teamRef, {
-              totalGrants: (selectedTeam.totalGrants || 0) + amount,
-              grantCount: (selectedTeam.grantCount || 0) + 1,
-            })
+            if (selectedTeam) {
+              const teamRef = doc(db, "teams", selectedTeam.id)
+              await updateDoc(teamRef, {
+                totalGrants: (selectedTeam.totalGrants || 0) + amount,
+                grantCount: (selectedTeam.grantCount || 0) + 1,
+              })
+            }
 
             // Show success message
-            console.log(`Successfully transferred $${amount} to ${selectedTeam.walletAddress}`)
+            if (selectedTeam) {
+              console.log(`Successfully transferred $${amount} to ${selectedTeam.walletAddress}`)
+            } else {
+              console.log(`Successfully transferred $${amount} to team`)
+            }
 
             setTimeout(() => {
               setShowGrantModal(false)
@@ -444,7 +435,6 @@ export default function HackathonGrantsPlatform() {
 
   // Vote for Team - Allow multiple votes
   const voteForTeam = async (teamId: string) => {
-    if (!isWalletConnected) return
 
     try {
       const vote = {
@@ -485,7 +475,7 @@ export default function HackathonGrantsPlatform() {
     return team.prototypeUrl || `${window.location.origin}/team/${team.id}`
   }
 
-  if (isLoading) {
+  if (issLoading) {
     return (
       <div className="min-h-screen bg-black text-white flex items-center justify-center">
         <div className="text-center">
@@ -549,7 +539,6 @@ export default function HackathonGrantsPlatform() {
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
-              <ConnectButton />
             </div>
           </div>
         </div>
@@ -558,7 +547,7 @@ export default function HackathonGrantsPlatform() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Role Selection */}
-        {isWalletConnected && (
+        { (
           <div className="mb-8 text-center">
             <p className="text-gray-400 mb-4">Select your role:</p>
             <div className="flex justify-center space-x-4">
@@ -757,7 +746,6 @@ export default function HackathonGrantsPlatform() {
                               setSelectedTeam(team)
                               setShowVoteModal(true)
                             }}
-                            disabled={!isWalletConnected}
                             className="flex-1 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-black font-bold"
                           >
                             <Heart className="w-4 h-4 mr-2" />
@@ -776,6 +764,7 @@ export default function HackathonGrantsPlatform() {
                           <QrCode className="w-4 h-4" />
                         </Button>
 
+                       
                         {team.prototypeUrl && (
                           <Button
                             variant="outline"
@@ -785,6 +774,22 @@ export default function HackathonGrantsPlatform() {
                             <ExternalLink className="w-4 h-4" />
                           </Button>
                         )}
+
+<input
+      type="number"
+      name="amount"
+      placeholder="Enter amount"
+      className="w-24 px-2 py-1 text-sm text-black rounded-md"
+      value={amounts[team.id] || ""}
+      onChange={(e) =>
+        setAmounts((prev) => ({
+          ...prev,
+          [team.id]: e.target.value,
+        }))
+      }
+    />
+
+
                       </div>
                     </CardContent>
                   </Card>
@@ -908,7 +913,7 @@ export default function HackathonGrantsPlatform() {
                 <CardContent className="p-6">
                   <div className="text-center">
                     <p className="text-gray-400 text-sm">Available Balance</p>
-                    <p className="text-4xl font-bold text-green-400">${walletBalance()}</p>
+                    <p className="text-4xl font-bold text-green-400">$</p>
                     <p className="text-gray-400 text-sm">Ready to grant</p>
                   </div>
                 </CardContent>
@@ -1318,8 +1323,6 @@ export default function HackathonGrantsPlatform() {
                   onClick={() => sendGrant(Number.parseFloat(grantAmount), grantMessage)}
                   disabled={
                     !grantAmount ||
-                    !isWalletConnected ||
-                    Number(data?.totalBalance ?? 0) < Number.parseFloat(grantAmount) ||
                     isNaN(Number.parseFloat(grantAmount)) ||
                     Number.parseFloat(grantAmount) <= 0
                   }
@@ -1430,7 +1433,7 @@ export default function HackathonGrantsPlatform() {
           businessName="Your Business"
           merchantName="Your Merchant"
           merchantAddress={depositTeam.walletAddress}
-          amount={100}
+          amount={depositTeam ? parseInt(amounts[depositTeam.id] || "0") : 0}
         />
       )}
     </div>
