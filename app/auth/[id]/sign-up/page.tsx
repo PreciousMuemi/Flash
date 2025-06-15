@@ -25,7 +25,7 @@ const page = () => {
 
     useEffect(() => {
 
-    const idToken = searchParams.get('id_token');
+    const idToken = searchParams?.get('id_token');
     if (idToken) {
       setJwt(idToken);
       getUserSalt(idToken).then(setSalt);
