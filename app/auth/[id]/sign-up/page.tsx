@@ -14,6 +14,7 @@ import {
   assembleZkLoginSignature,
 } from '@/utils/zkLogin';
 import { SuiClient } from '@mysten/sui/client';
+import { SignUpForm } from '@/components/register-form';
 
 
 const page = () => {
@@ -58,9 +59,7 @@ const page = () => {
   };
 
   return (
-    <button onClick={handleZkLogin}>
-      Sign in with zkLogin
-    </button>
+    <SignUpForm handleZkLogin={handleZkLogin}/>
   )
 }
 
